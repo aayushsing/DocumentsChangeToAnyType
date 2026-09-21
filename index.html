@@ -143,6 +143,25 @@
     .edit-text.text-editing{cursor:text;outline:2px solid #06b6d4;resize:none!important;overflow:visible!important}
     .edit-text.text-editing::after{display:none}
     .edit-text[data-patch="true"]{border-radius:1px}
+    .match-toolbar{
+      position:fixed;display:none;z-index:220;width:min(460px,calc(100vw - 24px));padding:10px 11px 9px;
+      background:rgba(255,255,255,.98);border:1px solid #a5b4fc;border-radius:13px;
+      box-shadow:0 18px 48px rgba(15,23,42,.22);backdrop-filter:blur(10px);user-select:none
+    }
+    .match-toolbar.show{display:block}
+    .match-toolbar::before{content:'';position:absolute;top:-6px;left:28px;width:11px;height:11px;background:#fff;border-left:1px solid #a5b4fc;border-top:1px solid #a5b4fc;transform:rotate(45deg)}
+    .match-toolbar.above::before{top:auto;bottom:-6px;border-left:0;border-top:0;border-right:1px solid #a5b4fc;border-bottom:1px solid #a5b4fc}
+    .match-toolbar-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;font-size:11px;font-weight:800;color:#4338ca}
+    .match-toolbar textarea{width:100%;min-height:42px;max-height:88px;resize:vertical;border:1px solid #cbd5e1;border-radius:9px;padding:8px 9px;outline:none;background:#fff;color:#0f172a;line-height:1.3}
+    .match-toolbar textarea:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+    .match-toolbar-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:8px}
+    .match-control label{display:flex;justify-content:space-between;gap:8px;font-size:10px;font-weight:750;color:#475569;margin-bottom:3px}
+    .match-control input[type="range"]{width:100%;accent-color:#4f46e5}
+    .match-preview{margin-top:7px;padding:6px 8px;border:1px dashed #cbd5e1;border-radius:8px;min-height:28px;white-space:pre-wrap;overflow:hidden;line-height:1.1}
+    .match-toolbar-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:7px}
+    .match-toolbar-actions button{border:1px solid var(--line);border-radius:8px;padding:6px 9px;background:#fff;font-size:10px;font-weight:750;color:#334155}
+    .match-toolbar-actions .done{background:#4f46e5;color:#fff;border-color:#4f46e5}
+    .match-toolbar-actions .delete{color:#b91c1c;border-color:#fecaca;background:#fff7f7}
     .editor-panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;align-self:start;position:sticky;top:100px}
     .editor-panel h4{margin:0 0 10px}.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.checkbox{display:flex;gap:8px;align-items:center;font-size:12px;color:#475569}.kbd{padding:2px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;background:#fff;font-size:10px}
     .detect-card{margin:10px 0;padding:10px;border:1px solid #c7d2fe;border-radius:10px;background:#eef2ff;color:#3730a3;font-size:11px;line-height:1.45}
@@ -228,8 +247,8 @@
               <div class="row2"><div class="form-row"><label>Size</label><input id="fontSize" type="number" min="6" max="120" value="18"></div><div class="form-row"><label>Weight</label><select id="fontWeight"><option value="400">Regular</option><option value="600">Semi Bold</option><option value="700">Bold</option></select></div></div>
               <div class="row2"><div class="form-row"><label>Font colour</label><input id="fontColor" type="color" value="#111827"></div><div class="form-row"><label>Opacity</label><input id="fontOpacity" type="range" min="20" max="100" value="100"></div></div>
               <div class="form-row"><label>Font brightness <span id="brightValue">100%</span></label><input id="fontBrightness" type="range" min="40" max="180" value="100"></div>
-              <div class="form-row"><label>Old-print darkness / fade <span id="darkValue">100%</span></label><input id="textDarkness" type="range" min="0" max="160" value="100"></div>
-              <div class="small">0% = very faded/aged print · 100% = detected ink · 160% = darker fresh ink. This blends the replacement text with the sampled paper colour so old scans look more natural.</div>
+              <div class="form-row"><label>Old-print darkness / fade <span id="darkValue">100%</span></label><input id="textDarkness" type="range" min="5" max="160" value="100"></div>
+              <div class="small">5% = extremely faded/aged print · 100% = detected ink · 160% = darker fresh ink. This blends the replacement text with the sampled paper colour so old scans look more natural.</div>
               <label class="checkbox"><input id="patchToggle" type="checkbox" checked> Hide old text with matched background patch</label>
               <div class="row2" style="margin-top:12px"><button class="mini-btn" id="addTextBtn">+ Add text</button><button class="mini-btn" id="matchBgBtn">Rebuild background</button></div>
               <div class="row2" style="margin-top:8px"><button class="mini-btn" id="ocrLayerBtn">OCR → editable layer</button><button class="mini-btn" id="deleteTextBtn">Delete selected</button></div>
@@ -244,6 +263,16 @@
     </section>
 
     <footer class="footer">DocMorph Studio • single-file client-side prototype • best results with clean high-resolution scans.</footer>
+  </div>
+  <div class="match-toolbar" id="floatingMatchToolbar" aria-live="polite">
+    <div class="match-toolbar-head"><span>Live text match — updates the box while you type</span><span id="floatingMatchStatus">Selected</span></div>
+    <textarea id="floatingReplacementText" rows="2" placeholder="Type replacement text here…"></textarea>
+    <div class="match-toolbar-grid">
+      <div class="match-control"><label><span>Brightness</span><span id="floatingBrightValue">100%</span></label><input id="floatingBrightness" type="range" min="40" max="180" value="100"></div>
+      <div class="match-control"><label><span>Old-print darkness</span><span id="floatingDarkValue">100%</span></label><input id="floatingDarkness" type="range" min="5" max="160" value="100"></div>
+    </div>
+    <div class="match-preview" id="floatingMatchPreview">Live preview</div>
+    <div class="match-toolbar-actions"><button id="floatingDelete" class="delete" type="button">Delete box</button><button id="floatingDone" class="done" type="button">Done</button></div>
   </div>
   <div class="toast" id="toast"></div>
 
@@ -574,6 +603,7 @@
       const maxY=Math.max(0,$('#bgCanvas').height-(parseFloat(el.style.height)||parseFloat(el.style.minHeight)||18));
       el.style.left=clamp(drag.left+dx,0,maxX)+'px';
       el.style.top=clamp(drag.top+dy,0,maxY)+'px';
+      if(state.selectedText===el) scheduleMatchToolbarPosition();
     });
     const endDrag=e=>{
       if(!drag || (e.pointerId!=null && e.pointerId!==drag.id)) return;
@@ -592,7 +622,7 @@
       // getBoundingClientRect includes page transform; set clean internal pixel dimensions.
       if(Math.abs(nw-lastW)<1 && Math.abs(nh-lastH)<1)return;
       lastW=nw;lastH=nh;el.style.width=nw+'px';el.style.height=nh+'px';
-      if(state.selectedText===el){$('#boxWidth').value=nw;$('#boxHeight').value=nh;}
+      if(state.selectedText===el){$('#boxWidth').value=nw;$('#boxHeight').value=nh;scheduleMatchToolbarPosition();updateFloatingMatchPreview(el);}
       clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(el.isConnected && el.dataset.patch==='true')applyMatchedPatch(el);},140);
     });
     ro.observe(el);
@@ -605,7 +635,7 @@
       const range=document.createRange();range.selectNodeContents(el);range.collapse(false);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
     });
     el.addEventListener('blur',()=>{el.contentEditable='false';el.classList.remove('text-editing');});
-    el.addEventListener('input',()=>{selectEditable(el);if($('#replacementText').value!==el.textContent)$('#replacementText').value=el.textContent||'';});
+    el.addEventListener('input',()=>{selectEditable(el);if($('#replacementText').value!==el.textContent)$('#replacementText').value=el.textContent||'';syncFloatingMatchToolbar(el);});
     $('#overlayLayer').appendChild(el);
     if(opts.patchData){ setPatchImage(el,opts.patchData,opts.backgroundColor||''); }
     else if(opts.patch && opts.autoPatch===false){ el.dataset.patch='true'; }
@@ -615,12 +645,56 @@
     return el;
   }
 
+  let matchToolbarRAF=0;
+  function scheduleMatchToolbarPosition(){
+    cancelAnimationFrame(matchToolbarRAF);
+    matchToolbarRAF=requestAnimationFrame(positionMatchToolbar);
+  }
+  function positionMatchToolbar(){
+    const bar=$('#floatingMatchToolbar'),el=state.selectedText;
+    if(!bar||!el||!el.isConnected||state.drawMode){if(bar)bar.classList.remove('show');return;}
+    bar.classList.add('show');
+    bar.classList.remove('above');
+    const r=el.getBoundingClientRect();
+    const bw=bar.offsetWidth||440,bh=bar.offsetHeight||180,margin=9;
+    let left=clamp(r.left,8,Math.max(8,window.innerWidth-bw-8));
+    let top=r.bottom+margin;
+    if(top+bh>window.innerHeight-8 && r.top-bh-margin>8){top=r.top-bh-margin;bar.classList.add('above');}
+    top=clamp(top,8,Math.max(8,window.innerHeight-bh-8));
+    bar.style.left=Math.round(left)+'px';bar.style.top=Math.round(top)+'px';
+  }
+  function updateFloatingMatchPreview(el=state.selectedText){
+    const bar=$('#floatingMatchToolbar'),preview=$('#floatingMatchPreview');
+    if(!bar||!preview||!el||!el.isConnected)return;
+    const cs=getComputedStyle(el);
+    preview.textContent=(el.textContent||'Type replacement text…') || 'Type replacement text…';
+    preview.style.fontFamily=cs.fontFamily;
+    preview.style.fontSize=Math.min(24,Math.max(11,parseFloat(cs.fontSize)||16))+'px';
+    preview.style.fontWeight=cs.fontWeight;
+    preview.style.color=cs.color;
+    preview.style.opacity=cs.opacity;
+    preview.style.backgroundColor=el.dataset.backgroundColor||'#ffffff';
+    preview.style.textShadow=cs.textShadow==='none'?'none':cs.textShadow;
+    $('#floatingMatchStatus').textContent=(parseFloat(el.dataset.darkness||100)<20)?'Very faint':'Live';
+  }
+  function syncFloatingMatchToolbar(el=state.selectedText){
+    const bar=$('#floatingMatchToolbar');if(!bar)return;
+    if(!el||!el.isConnected||state.drawMode){bar.classList.remove('show');return;}
+    $('#floatingReplacementText').value=el.textContent||'';
+    const br=Math.round(parseFloat(el.dataset.brightness||100)),dk=Math.max(5,Math.round(parseFloat(el.dataset.darkness||100)));
+    $('#floatingBrightness').value=br;$('#floatingBrightValue').textContent=br+'%';
+    $('#floatingDarkness').value=dk;$('#floatingDarkValue').textContent=dk+'%';
+    updateFloatingMatchPreview(el);scheduleMatchToolbarPosition();
+  }
+  function hideFloatingMatchToolbar(){const bar=$('#floatingMatchToolbar');if(bar)bar.classList.remove('show');}
+
   function selectEditable(el){
     $$('.edit-text').forEach(x=>x.classList.remove('selected')); state.selectedText=el;
-    if(!el){ $('#replacementText').value=''; $('#boxWidth').value=220; $('#boxHeight').value=32; return; }
+    if(!el){ $('#replacementText').value=''; $('#boxWidth').value=220; $('#boxHeight').value=32; hideFloatingMatchToolbar(); return; }
     el.classList.add('selected');$('#fontFamily').value=closestFont(el.style.fontFamily);$('#fontSize').value=parseFloat(el.style.fontSize)||18;$('#fontWeight').value=el.style.fontWeight||'400';
     const color=el.dataset.baseColor||rgbCssToHex(el.style.color)||'#111827'; $('#fontColor').value=color; $('#replacementText').value=el.textContent||''; $('#fontOpacity').value=Math.round((parseFloat(el.style.opacity||1))*100); $('#boxWidth').value=Math.round(parseFloat(el.style.width)||el.offsetWidth||220); $('#boxHeight').value=Math.round(parseFloat(el.style.height)||el.offsetHeight||32);
-    const br=Math.round(parseFloat(el.dataset.brightness||100)), dk=Math.round(parseFloat(el.dataset.darkness||100)); $('#fontBrightness').value=br; $('#brightValue').textContent=br+'%'; $('#textDarkness').value=dk; $('#darkValue').textContent=dk+'%';
+    const br=Math.round(parseFloat(el.dataset.brightness||100)), dk=Math.max(5,Math.round(parseFloat(el.dataset.darkness||100))); el.dataset.darkness=dk; $('#fontBrightness').value=br; $('#brightValue').textContent=br+'%'; $('#textDarkness').value=dk; $('#darkValue').textContent=dk+'%';
+    applyTextTone(el);syncFloatingMatchToolbar(el);
   }
   function closestFont(f=''){ const arr=['Arial','Calibri','Cambria','Times New Roman','Georgia','Verdana','Tahoma','Courier New','Poppins'];return arr.find(x=>f.toLowerCase().includes(x.toLowerCase()))||'Arial'; }
 
@@ -758,6 +832,7 @@
     $('#drawReplaceBtn').classList.toggle('active',state.drawMode);
     $('#selectModeBtn').classList.toggle('active',!state.drawMode);
     $('#drawReplaceBtn').textContent=state.drawMode?'✕ Cancel drawing':'▭ Draw replace box';
+    if(state.drawMode) hideFloatingMatchToolbar(); else if(state.selectedText) syncFloatingMatchToolbar(state.selectedText);
     if(notify){
       if(state.drawMode) toast('Draw mode: drag a rectangle tightly around the old text.');
       else toast('Cursor mode: click a box to select, drag to move, resize from its bottom-right corner, Delete to remove.');
@@ -768,6 +843,7 @@
     if(!el){toast('Select a replacement box first.');return;}
     el.remove();
     state.selectedText=null;
+    hideFloatingMatchToolbar();
     $('#replacementText').value='';
     $('#detectedStyle').innerHTML='Box deleted. The original scanned text/background is visible again. Use <b>Draw replace box</b> to create another.';
     toast('Selected box deleted.');
@@ -865,6 +941,7 @@
     el.style.color=`rgb(${ink.r},${ink.g},${ink.b})`;
     // A tiny softening at low darkness mimics faded toner/ink without blurring layout.
     el.style.textShadow=darkness<72?'0 0 0.25px currentColor':'none';
+    if(state.selectedText===el) updateFloatingMatchPreview(el);
   }
   function adjustBrightness(hex,p){const c=adjustBrightnessRgb(hexToRgb(hex),p);return `rgb(${c.r},${c.g},${c.b})`}
   function setSelectedBoxSize(axis,value){
@@ -876,15 +953,33 @@
   }
   $('#boxWidth').addEventListener('input',e=>setSelectedBoxSize('w',e.target.value));
   $('#boxHeight').addEventListener('input',e=>setSelectedBoxSize('h',e.target.value));
-  $('#replacementText').addEventListener('input',e=>{if(state.selectedText)state.selectedText.textContent=e.target.value;});
+  $('#replacementText').addEventListener('input',e=>{if(state.selectedText){state.selectedText.textContent=e.target.value;syncFloatingMatchToolbar(state.selectedText);}});
   $('#fontFamily').addEventListener('change',e=>{if(state.selectedText)state.selectedText.style.fontFamily=e.target.value});
   $('#fontSize').addEventListener('input',e=>{if(state.selectedText)state.selectedText.style.fontSize=e.target.value+'px'});
   $('#fontWeight').addEventListener('change',e=>{if(state.selectedText)state.selectedText.style.fontWeight=e.target.value});
   $('#fontColor').addEventListener('input',e=>{if(state.selectedText){state.selectedText.dataset.baseColor=e.target.value;applyTextTone(state.selectedText)}});
   $('#fontOpacity').addEventListener('input',e=>{if(state.selectedText)state.selectedText.style.opacity=e.target.value/100});
-  $('#fontBrightness').addEventListener('input',e=>{ $('#brightValue').textContent=e.target.value+'%';if(state.selectedText){state.selectedText.dataset.brightness=e.target.value;applyTextTone(state.selectedText)}});
-  $('#textDarkness').addEventListener('input',e=>{ $('#darkValue').textContent=e.target.value+'%';if(state.selectedText){state.selectedText.dataset.darkness=e.target.value;applyTextTone(state.selectedText)}});
+  $('#fontBrightness').addEventListener('input',e=>{ $('#brightValue').textContent=e.target.value+'%';if(state.selectedText){state.selectedText.dataset.brightness=e.target.value;applyTextTone(state.selectedText);syncFloatingMatchToolbar(state.selectedText)}});
+  $('#textDarkness').addEventListener('input',e=>{ $('#darkValue').textContent=e.target.value+'%';if(state.selectedText){state.selectedText.dataset.darkness=Math.max(5,+e.target.value);applyTextTone(state.selectedText);syncFloatingMatchToolbar(state.selectedText)}});
   $('#patchToggle').addEventListener('change',e=>{if(!state.selectedText)return;if(e.target.checked)applyMatchedPatch();else{state.selectedText.style.background='transparent';state.selectedText.style.backgroundImage='none';state.selectedText.style.boxShadow='none';state.selectedText.dataset.patch='false';state.selectedText.dataset.patchData='';}});
+
+  $('#floatingReplacementText').addEventListener('input',e=>{
+    const el=state.selectedText;if(!el)return;
+    el.textContent=e.target.value;$('#replacementText').value=e.target.value;updateFloatingMatchPreview(el);scheduleMatchToolbarPosition();
+  });
+  $('#floatingBrightness').addEventListener('input',e=>{
+    const el=state.selectedText;if(!el)return;
+    const v=+e.target.value;el.dataset.brightness=v;$('#fontBrightness').value=v;$('#brightValue').textContent=v+'%';$('#floatingBrightValue').textContent=v+'%';applyTextTone(el);
+  });
+  $('#floatingDarkness').addEventListener('input',e=>{
+    const el=state.selectedText;if(!el)return;
+    const v=Math.max(5,+e.target.value);el.dataset.darkness=v;$('#textDarkness').value=v;$('#darkValue').textContent=v+'%';$('#floatingDarkValue').textContent=v+'%';applyTextTone(el);
+  });
+  $('#floatingDone').addEventListener('click',()=>{hideFloatingMatchToolbar();state.selectedText?.blur();});
+  $('#floatingDelete').addEventListener('click',deleteSelectedBox);
+  window.addEventListener('resize',scheduleMatchToolbarPosition);
+  window.addEventListener('scroll',scheduleMatchToolbarPosition,true);
+  $('#canvasScroll').addEventListener('scroll',scheduleMatchToolbarPosition,{passive:true});
 
   $('#ocrLayerBtn').addEventListener('click', async()=>{
     if(!state.editorPages.length)return;
@@ -910,6 +1005,7 @@
 
   async function compositeEditorPage(index){
     if(index!==state.editorPage) loadEditorPage(index);
+    hideFloatingMatchToolbar();
     $$('.edit-text').forEach(x=>x.classList.remove('selected'));
     const paper=$('#paper'), old=paper.style.transform, oldMB=paper.style.marginBottom;paper.style.transform='none';paper.style.marginBottom='0';
     const c=await html2canvas(paper,{scale:1,backgroundColor:null,useCORS:true,logging:false});paper.style.transform=old;paper.style.marginBottom=oldMB;return c;
