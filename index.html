@@ -137,7 +137,7 @@
       position:absolute;min-width:40px;min-height:20px;padding:1px 2px;outline:1px dashed transparent;
       white-space:pre-wrap;line-height:1.05;pointer-events:auto;cursor:move;transform-origin:left top;z-index:25;overflow:visible
     }
-    .edit-text .edit-text-content{display:inline-block;white-space:pre-wrap;line-height:inherit;transform-origin:left top;transform:scale(var(--text-scale-x,1),var(--text-scale-y,1));}
+    .edit-text .edit-text-content{display:inline-block;white-space:pre-wrap;line-height:inherit;transform-origin:left top;transform:scale(var(--text-scale-x,1),var(--text-scale-y,1));filter:blur(var(--print-softness,0px));text-shadow:var(--print-bleed,none);}
     .edit-text:hover{outline:1px dashed rgba(79,70,229,.65)}
     .edit-text.selected{outline:2px solid #4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.14);resize:both;overflow:hidden}
     .edit-text.selected::after{content:'↘';position:absolute;right:1px;bottom:-1px;width:18px;height:18px;display:grid;place-items:center;font-size:12px;line-height:1;color:#fff;background:#4f46e5;border-radius:5px 0 0 0;pointer-events:none}
@@ -145,7 +145,7 @@
     .edit-text.text-editing::after{display:none}
     .edit-text[data-patch="true"]{border-radius:1px}
     .match-toolbar{
-      position:fixed;display:none;z-index:220;width:min(460px,calc(100vw - 24px));padding:10px 11px 9px;
+      position:fixed;display:none;z-index:220;width:min(520px,calc(100vw - 24px));padding:10px 11px 9px;
       background:rgba(255,255,255,.98);border:1px solid #a5b4fc;border-radius:13px;
       box-shadow:0 18px 48px rgba(15,23,42,.22);backdrop-filter:blur(10px);user-select:none
     }
@@ -155,7 +155,7 @@
     .match-toolbar-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;font-size:11px;font-weight:800;color:#4338ca}
     .match-toolbar textarea{width:100%;min-height:42px;max-height:88px;resize:vertical;border:1px solid #cbd5e1;border-radius:9px;padding:8px 9px;outline:none;background:#fff;color:#0f172a;line-height:1.3}
     .match-toolbar textarea:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12)}
-    .match-toolbar-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:8px}
+    .match-toolbar-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:8px}.match-toolbar-grid.tone-grid{grid-template-columns:repeat(3,1fr)}
     .match-control label{display:flex;justify-content:space-between;gap:8px;font-size:10px;font-weight:750;color:#475569;margin-bottom:3px}
     .match-control input[type="range"]{width:100%;accent-color:#4f46e5}
     .font-size-live{margin-top:8px;padding:8px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}
@@ -182,7 +182,7 @@
     .toast{position:fixed;right:18px;bottom:18px;z-index:100;background:#0f172a;color:#fff;padding:12px 14px;border-radius:12px;box-shadow:0 12px 34px rgba(15,23,42,.25);opacity:0;transform:translateY(10px);pointer-events:none;transition:.25s;max-width:340px;font-size:12px}.toast.show{opacity:1;transform:none}
 
     @media(max-width:1050px){.tool-grid{grid-template-columns:repeat(3,1fr)}.workspace{grid-template-columns:1fr}.side{position:static}.editor-shell{grid-template-columns:1fr}.editor-panel{position:static}}
-    @media(max-width:680px){.shell{width:min(100% - 20px,1440px)}.hero{padding-top:42px}.tool-grid{grid-template-columns:1fr 1fr}.workspace{padding-top:12px}.main-head{flex-direction:column}.stage{padding:12px}.doc-preview{padding:20px}.editor-shell{gap:9px}.canvas-scroll{padding:8px}}
+    @media(max-width:680px){.match-toolbar-grid.tone-grid{grid-template-columns:1fr}.shell{width:min(100% - 20px,1440px)}.hero{padding-top:42px}.tool-grid{grid-template-columns:1fr 1fr}.workspace{padding-top:12px}.main-head{flex-direction:column}.stage{padding:12px}.doc-preview{padding:20px}.editor-shell{gap:9px}.canvas-scroll{padding:8px}}
   </style>
 </head>
 <body>
@@ -257,7 +257,9 @@
               <div class="row2"><div class="form-row"><label>Font colour</label><input id="fontColor" type="color" value="#111827"></div><div class="form-row"><label>Opacity</label><input id="fontOpacity" type="range" min="20" max="100" value="100"></div></div>
               <div class="form-row"><label>Font brightness <span id="brightValue">100%</span></label><input id="fontBrightness" type="range" min="40" max="180" value="100"></div>
               <div class="form-row"><label>Old-print darkness / fade <span id="darkValue">100%</span></label><input id="textDarkness" type="range" min="5" max="160" value="100"></div>
+              <div class="form-row"><label>Print softness / blur <span id="blurValue">0.30 px</span></label><input id="textBlur" type="range" min="0" max="1.8" step="0.05" value="0.30"></div>
               <div class="small">5% = extremely faded/aged print · 100% = detected ink · 160% = darker fresh ink. This blends the replacement text with the sampled paper colour so old scans look more natural.</div>
+              <div class="small">Print softness adds a tiny blur + ink spread to the letters only. Around <b>0.20–0.55 px</b> usually looks natural on scanned documents; higher values are for low-quality/old prints.</div>
               <label class="checkbox"><input id="patchToggle" type="checkbox" checked> Hide old text with matched background patch</label>
               <div class="row2" style="margin-top:12px"><button class="mini-btn" id="addTextBtn">+ Add text</button><button class="mini-btn" id="matchBgBtn">Rebuild background</button></div>
               <div class="row2" style="margin-top:8px"><button class="mini-btn" id="ocrLayerBtn">OCR → editable layer</button><button class="mini-btn" id="deleteTextBtn">Delete selected</button></div>
@@ -276,9 +278,10 @@
   <div class="match-toolbar" id="floatingMatchToolbar" aria-live="polite">
     <div class="match-toolbar-head"><span>Live text match — updates the box while you type</span><span id="floatingMatchStatus">Selected</span></div>
     <textarea id="floatingReplacementText" rows="2" placeholder="Type replacement text here…"></textarea>
-    <div class="match-toolbar-grid">
+    <div class="match-toolbar-grid tone-grid">
       <div class="match-control"><label><span>Brightness</span><span id="floatingBrightValue">100%</span></label><input id="floatingBrightness" type="range" min="40" max="180" value="100"></div>
       <div class="match-control"><label><span>Old-print darkness</span><span id="floatingDarkValue">100%</span></label><input id="floatingDarkness" type="range" min="5" max="160" value="100"></div>
+      <div class="match-control"><label><span>Print softness / blur</span><span id="floatingBlurValue">0.30 px</span></label><input id="floatingBlur" type="range" min="0" max="1.8" step="0.05" value="0.30"></div>
     </div>
     <div class="font-size-live">
       <div class="font-size-live-head"><span>Font size — live in the selected box</span><span id="floatingFontSizeValue">18 px</span></div>
@@ -576,6 +579,7 @@
       opacity:parseFloat(el.style.opacity||1),
       brightness:parseFloat(el.dataset.brightness||100),
       darkness:parseFloat(el.dataset.darkness||100),
+      softness:parseFloat(el.dataset.softness||0.30),
       patch:el.dataset.patch==='true',
       patchData:el.dataset.patchData||'',
       backgroundColor:el.dataset.backgroundColor||'',
@@ -616,7 +620,9 @@
     el.dataset.baseColor=opts.color||'#111827';
     el.dataset.brightness=String(opts.brightness ?? 100);
     el.dataset.darkness=String(opts.darkness ?? 100);
+    el.dataset.softness=String(opts.softness ?? 0.30);
     el.dataset.patch='false';
+    applyPrintSoftness(el);
 
     let drag=null;
     el.addEventListener('pointerdown',e=>{
@@ -710,7 +716,10 @@
     preview.style.color=cs.color;
     preview.style.opacity=cs.opacity;
     preview.style.backgroundColor=el.dataset.backgroundColor||'#ffffff';
-    preview.style.textShadow=cs.textShadow==='none'?'none':cs.textShadow;
+    const content=el.querySelector('.edit-text-content');
+    const ccs=content?getComputedStyle(content):cs;
+    preview.style.filter=ccs.filter==='none'?'none':ccs.filter;
+    preview.style.textShadow=ccs.textShadow==='none'?'none':ccs.textShadow;
     preview.style.transformOrigin='left top';
     preview.style.transform=`scale(${(parseFloat(el.dataset.scaleX||100)/100)},${(parseFloat(el.dataset.scaleY||100)/100)})`;
     $('#floatingMatchStatus').textContent=(parseFloat(el.dataset.darkness||100)<20)?'Very faint':'Live';
@@ -722,6 +731,7 @@
     const br=Math.round(parseFloat(el.dataset.brightness||100)),dk=Math.max(5,Math.round(parseFloat(el.dataset.darkness||100)));
     $('#floatingBrightness').value=br;$('#floatingBrightValue').textContent=br+'%';
     $('#floatingDarkness').value=dk;$('#floatingDarkValue').textContent=dk+'%';
+    const soft=clamp(parseFloat(el.dataset.softness||0.30),0,1.8);$('#floatingBlur').value=soft;$('#floatingBlurValue').textContent=soft.toFixed(2)+' px';
     const fs=clamp(parseFloat(el.style.fontSize)||18,6,160);
     $('#floatingFontSize').value=fs;$('#floatingFontSizeNumber').value=fs;$('#floatingFontSizeValue').textContent=(Math.round(fs*10)/10)+' px';
     const sx=clamp(parseFloat(el.dataset.scaleX||100),50,200),sy=clamp(parseFloat(el.dataset.scaleY||100),50,200);
@@ -737,7 +747,8 @@
     el.classList.add('selected');$('#fontFamily').value=closestFont(el.style.fontFamily);$('#fontSize').value=parseFloat(el.style.fontSize)||18;$('#fontWeight').value=el.style.fontWeight||'400';
     const color=el.dataset.baseColor||rgbCssToHex(el.style.color)||'#111827'; $('#fontColor').value=color; $('#replacementText').value=el.textContent||''; $('#fontOpacity').value=Math.round((parseFloat(el.style.opacity||1))*100); $('#boxWidth').value=Math.round(parseFloat(el.style.width)||el.offsetWidth||220); $('#boxHeight').value=Math.round(parseFloat(el.style.height)||el.offsetHeight||32);
     const br=Math.round(parseFloat(el.dataset.brightness||100)), dk=Math.max(5,Math.round(parseFloat(el.dataset.darkness||100))); el.dataset.darkness=dk; $('#fontBrightness').value=br; $('#brightValue').textContent=br+'%'; $('#textDarkness').value=dk; $('#darkValue').textContent=dk+'%';
-    applyTextTone(el);syncFloatingMatchToolbar(el);
+    const soft=clamp(parseFloat(el.dataset.softness||0.30),0,1.8);el.dataset.softness=soft;$('#textBlur').value=soft;$('#blurValue').textContent=soft.toFixed(2)+' px';
+    applyTextTone(el);applyPrintSoftness(el);syncFloatingMatchToolbar(el);
   }
   function closestFont(f=''){ const arr=['Arial','Calibri','Cambria','Times New Roman','Georgia','Verdana','Tahoma','Courier New','Poppins'];return arr.find(x=>f.toLowerCase().includes(x.toLowerCase()))||'Arial'; }
 
@@ -821,6 +832,7 @@
     selectEditable(el);
     $('#fontBrightness').value=100;
     $('#brightValue').textContent='100%';
+    $('#textBlur').value=0.30;$('#blurValue').textContent='0.30 px';el.dataset.softness='0.30';applyPrintSoftness(el);
     $('#replacementText').value='';
     $('#detectedStyle').textContent=`Area selected: ~${firstStyle.fontSize}px • weight ${firstStyle.fontWeight} • text ${firstStyle.color} • background ${firstStyle.bg}. OCR is reading the original text…`;
     $('#replacementText').focus();
@@ -973,6 +985,19 @@
   function parseCssColor(v,fallback='#ffffff'){ if(!v)return hexToRgb(fallback); if(/^#[0-9a-f]{6}$/i.test(v))return hexToRgb(v); const m=v.match(/rgba?\((\d+)[, ]+(\d+)[, ]+(\d+)/i); return m?{r:+m[1],g:+m[2],b:+m[3]}:hexToRgb(fallback); }
   function adjustBrightnessRgb(c,p){const f=p/100;return {r:clamp(Math.round(c.r*f),0,255),g:clamp(Math.round(c.g*f),0,255),b:clamp(Math.round(c.b*f),0,255)}}
   function mixRgb(a,b,t){t=clamp(t,0,1);return {r:Math.round(a.r*(1-t)+b.r*t),g:Math.round(a.g*(1-t)+b.g*t),b:Math.round(a.b*(1-t)+b.b*t)}}
+  function applyPrintSoftness(el=state.selectedText){
+    if(!el)return;
+    const soft=clamp(parseFloat(el.dataset.softness||0),0,1.8);
+    el.dataset.softness=String(soft);
+    const content=el.querySelector('.edit-text-content');
+    if(content){
+      content.style.setProperty('--print-softness',soft.toFixed(2)+'px');
+      // A tiny same-colour halo imitates toner/ink spread around scanned glyph edges.
+      const bleed=Math.max(0,soft*0.42);
+      content.style.setProperty('--print-bleed',soft>0.02?`0 0 ${bleed.toFixed(2)}px currentColor`:'none');
+    }
+    if(state.selectedText===el)updateFloatingMatchPreview(el);
+  }
   function applyTextTone(el=state.selectedText){
     if(!el)return;
     const base=hexToRgb(el.dataset.baseColor||'#111827');
@@ -983,8 +1008,9 @@
     if(darkness<100) ink=mixRgb(bg,ink,darkness/100);
     else if(darkness>100) ink=mixRgb(ink,{r:0,g:0,b:0},((darkness-100)/60)*0.72);
     el.style.color=`rgb(${ink.r},${ink.g},${ink.b})`;
-    // A tiny softening at low darkness mimics faded toner/ink without blurring layout.
-    el.style.textShadow=darkness<72?'0 0 0.25px currentColor':'none';
+    // Softness is handled independently on the inner text layer, so the background patch remains sharp.
+    el.style.textShadow='none';
+    applyPrintSoftness(el);
     if(state.selectedText===el) updateFloatingMatchPreview(el);
   }
   function adjustBrightness(hex,p){const c=adjustBrightnessRgb(hexToRgb(hex),p);return `rgb(${c.r},${c.g},${c.b})`}
@@ -1005,6 +1031,7 @@
   $('#fontOpacity').addEventListener('input',e=>{if(state.selectedText)state.selectedText.style.opacity=e.target.value/100});
   $('#fontBrightness').addEventListener('input',e=>{ $('#brightValue').textContent=e.target.value+'%';if(state.selectedText){state.selectedText.dataset.brightness=e.target.value;applyTextTone(state.selectedText);syncFloatingMatchToolbar(state.selectedText)}});
   $('#textDarkness').addEventListener('input',e=>{ $('#darkValue').textContent=e.target.value+'%';if(state.selectedText){state.selectedText.dataset.darkness=Math.max(5,+e.target.value);applyTextTone(state.selectedText);syncFloatingMatchToolbar(state.selectedText)}});
+  $('#textBlur').addEventListener('input',e=>{const v=clamp(+e.target.value||0,0,1.8);$('#blurValue').textContent=v.toFixed(2)+' px';if(state.selectedText){state.selectedText.dataset.softness=v;applyPrintSoftness(state.selectedText);syncFloatingMatchToolbar(state.selectedText)}});
   $('#patchToggle').addEventListener('change',e=>{if(!state.selectedText)return;if(e.target.checked)applyMatchedPatch();else{state.selectedText.style.background='transparent';state.selectedText.style.backgroundImage='none';state.selectedText.style.boxShadow='none';state.selectedText.dataset.patch='false';state.selectedText.dataset.patchData='';}});
 
   $('#floatingReplacementText').addEventListener('input',e=>{
@@ -1064,6 +1091,10 @@
   $('#floatingDarkness').addEventListener('input',e=>{
     const el=state.selectedText;if(!el)return;
     const v=Math.max(5,+e.target.value);el.dataset.darkness=v;$('#textDarkness').value=v;$('#darkValue').textContent=v+'%';$('#floatingDarkValue').textContent=v+'%';applyTextTone(el);
+  });
+  $('#floatingBlur').addEventListener('input',e=>{
+    const el=state.selectedText;if(!el)return;
+    const v=clamp(+e.target.value||0,0,1.8);el.dataset.softness=v;$('#textBlur').value=v;$('#blurValue').textContent=v.toFixed(2)+' px';$('#floatingBlurValue').textContent=v.toFixed(2)+' px';applyPrintSoftness(el);
   });
   $('#floatingDone').addEventListener('click',()=>{hideFloatingMatchToolbar();state.selectedText?.blur();});
   $('#floatingDelete').addEventListener('click',deleteSelectedBox);
