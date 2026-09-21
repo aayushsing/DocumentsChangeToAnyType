@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DocMorph Studio v2 — Smart Scanned PDF Editor</title>
+  <title>DocMorph Studio v3 — Smart Scanned PDF Editor</title>
   <meta name="description" content="Convert PDF, Word, images and scanned documents directly in your browser. OCR, edit scanned pages while preserving the background, and export easily." />
 
   <!-- Browser-side libraries. The app itself remains one index.html file. -->
@@ -138,8 +138,10 @@
       white-space:pre-wrap;line-height:1.05;pointer-events:auto;cursor:move;transform-origin:left top;z-index:25;overflow:visible
     }
     .edit-text:hover{outline:1px dashed rgba(79,70,229,.65)}
-    .edit-text.selected{outline:2px solid #4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.14)}
-    .edit-text.text-editing{cursor:text;outline:2px solid #06b6d4}
+    .edit-text.selected{outline:2px solid #4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.14);resize:both;overflow:hidden}
+    .edit-text.selected::after{content:'↘';position:absolute;right:1px;bottom:-1px;width:18px;height:18px;display:grid;place-items:center;font-size:12px;line-height:1;color:#fff;background:#4f46e5;border-radius:5px 0 0 0;pointer-events:none}
+    .edit-text.text-editing{cursor:text;outline:2px solid #06b6d4;resize:none!important;overflow:visible!important}
+    .edit-text.text-editing::after{display:none}
     .edit-text[data-patch="true"]{border-radius:1px}
     .editor-panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;align-self:start;position:sticky;top:100px}
     .editor-panel h4{margin:0 0 10px}.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.checkbox{display:flex;gap:8px;align-items:center;font-size:12px;color:#475569}.kbd{padding:2px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;background:#fff;font-size:10px}
@@ -214,11 +216,13 @@
             </div>
             <div class="editor-panel">
               <h4>Smart text replacement</h4>
-              <div class="small">Choose <b>Draw replace box</b> and drag over the old text. Then the editor returns to <b>Cursor / Select</b> mode automatically. Click a box to select it, drag it to move it, double-click to edit directly, or use <b>Delete selected box</b> to remove an unwanted box.</div>
+              <div class="small">Choose <b>Draw replace box</b> and drag over the old text. Then the editor returns to <b>Cursor / Select</b> mode automatically. Click a box to select it, drag it to move it, <b>drag the bottom-right corner to resize width/height</b>, double-click to edit directly, or use <b>Delete selected box</b> to remove an unwanted box.</div>
               <div class="row2" style="margin-top:12px"><button class="mini-btn active" id="selectModeBtn">↖ Cursor / Select</button><button class="mini-btn primary" id="drawReplaceBtn">▭ Draw replace box</button></div>
               <div class="row2" style="margin-top:8px"><button class="mini-btn danger" id="deleteBoxBtn">🗑 Delete selected box</button><button class="mini-btn" id="autoMatchBtn">↻ Auto-match selected</button></div>
               <div class="detect-card" id="detectedStyle">Use <b>Cursor / Select</b> to click or move a box. Use <b>Draw replace box</b> to create a new replacement area.</div>
               <div class="form-row"><label>Replacement text</label><textarea id="replacementText" rows="3" placeholder="Draw a box first, then type the new text here."></textarea></div>
+              <div class="row2"><div class="form-row"><label>Box width / length</label><input id="boxWidth" type="number" min="40" max="5000" value="220"></div><div class="form-row"><label>Box height / breadth</label><input id="boxHeight" type="number" min="18" max="5000" value="32"></div></div>
+              <div class="small">Tip: select a box and drag its <b>bottom-right corner</b> to resize freely, or enter exact width/height above.</div>
               <div class="divider"></div>
               <div class="form-row"><label>Font family</label><select id="fontFamily"><option>Arial</option><option>Calibri</option><option>Cambria</option><option>Times New Roman</option><option>Georgia</option><option>Verdana</option><option>Tahoma</option><option>Courier New</option><option>Poppins</option></select></div>
               <div class="row2"><div class="form-row"><label>Size</label><input id="fontSize" type="number" min="6" max="120" value="18"></div><div class="form-row"><label>Weight</label><select id="fontWeight"><option value="400">Regular</option><option value="600">Semi Bold</option><option value="700">Bold</option></select></div></div>
@@ -507,7 +511,7 @@
       x:parseFloat(el.style.left)||0,
       y:parseFloat(el.style.top)||0,
       w:parseFloat(el.style.width)||120,
-      h:parseFloat(el.style.minHeight)||parseFloat(el.style.height)||24,
+      h:parseFloat(el.style.height)||parseFloat(el.style.minHeight)||24,
       fontFamily:el.style.fontFamily||'Arial',
       fontSize:parseFloat(el.style.fontSize)||18,
       fontWeight:el.style.fontWeight||'400',
@@ -536,7 +540,7 @@
     el.contentEditable='false';
     el.spellcheck=false;
     el.textContent=text;
-    el.style.left=x+'px';el.style.top=y+'px';el.style.width=Math.max(40,w)+'px';el.style.minHeight=Math.max(18,h)+'px';
+    el.style.left=x+'px';el.style.top=y+'px';el.style.width=Math.max(40,w)+'px';el.style.height=Math.max(18,h)+'px';el.style.minHeight='18px';
     el.style.fontFamily=opts.fontFamily||$('#fontFamily').value||'Arial';
     el.style.fontSize=(opts.fontSize||18)+'px';el.style.fontWeight=opts.fontWeight||'400';
     el.style.color=opts.color||'#111827';el.style.opacity=(opts.opacity ?? 1);
@@ -546,9 +550,11 @@
     el.addEventListener('pointerdown',e=>{
       if(state.drawMode) return;
       if(el.contentEditable==='true') return;
-      e.preventDefault();e.stopPropagation();
       selectEditable(el);
-      const scale=Number($('#paper').dataset.visualScale||1) || 1;
+      // Leave the native bottom-right resize grip free instead of starting a move drag.
+      const nearResizeCorner=(e.offsetX >= el.clientWidth-22 && e.offsetY >= el.clientHeight-22);
+      if(nearResizeCorner){e.stopPropagation();return;}
+      e.preventDefault();e.stopPropagation();
       drag={id:e.pointerId,startX:e.clientX,startY:e.clientY,left:parseFloat(el.style.left)||0,top:parseFloat(el.style.top)||0,moved:false};
       try{el.setPointerCapture(e.pointerId);}catch(_e){}
     });
@@ -558,7 +564,7 @@
       const dx=(e.clientX-drag.startX)/scale,dy=(e.clientY-drag.startY)/scale;
       if(Math.abs(dx)>2||Math.abs(dy)>2)drag.moved=true;
       const maxX=Math.max(0,$('#bgCanvas').width-(parseFloat(el.style.width)||40));
-      const maxY=Math.max(0,$('#bgCanvas').height-(parseFloat(el.style.minHeight)||18));
+      const maxY=Math.max(0,$('#bgCanvas').height-(parseFloat(el.style.height)||parseFloat(el.style.minHeight)||18));
       el.style.left=clamp(drag.left+dx,0,maxX)+'px';
       el.style.top=clamp(drag.top+dy,0,maxY)+'px';
     });
@@ -569,6 +575,20 @@
     el.addEventListener('pointerup',endDrag);
     el.addEventListener('pointercancel',endDrag);
     el.addEventListener('lostpointercapture',endDrag);
+
+    // Watch native resize changes so the control panel and background patch stay in sync.
+    let resizeTimer=null, lastW=parseFloat(el.style.width)||w, lastH=parseFloat(el.style.height)||h;
+    const ro=new ResizeObserver(()=>{
+      if(!el.isConnected)return;
+      const nw=Math.max(40,Math.round(el.getBoundingClientRect().width/(Number($('#paper').dataset.visualScale||1)||1)));
+      const nh=Math.max(18,Math.round(el.getBoundingClientRect().height/(Number($('#paper').dataset.visualScale||1)||1)));
+      // getBoundingClientRect includes page transform; set clean internal pixel dimensions.
+      if(Math.abs(nw-lastW)<1 && Math.abs(nh-lastH)<1)return;
+      lastW=nw;lastH=nh;el.style.width=nw+'px';el.style.height=nh+'px';
+      if(state.selectedText===el){$('#boxWidth').value=nw;$('#boxHeight').value=nh;}
+      clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(el.isConnected && el.dataset.patch==='true')applyMatchedPatch(el);},140);
+    });
+    ro.observe(el);
 
     el.addEventListener('dblclick',e=>{
       if(state.drawMode)return;
@@ -589,9 +609,9 @@
 
   function selectEditable(el){
     $$('.edit-text').forEach(x=>x.classList.remove('selected')); state.selectedText=el;
-    if(!el){ $('#replacementText').value=''; return; }
+    if(!el){ $('#replacementText').value=''; $('#boxWidth').value=220; $('#boxHeight').value=32; return; }
     el.classList.add('selected');$('#fontFamily').value=closestFont(el.style.fontFamily);$('#fontSize').value=parseFloat(el.style.fontSize)||18;$('#fontWeight').value=el.style.fontWeight||'400';
-    const color=el.dataset.baseColor||rgbCssToHex(el.style.color)||'#111827'; $('#fontColor').value=color; $('#replacementText').value=el.textContent||''; $('#fontOpacity').value=Math.round((parseFloat(el.style.opacity||1))*100);
+    const color=el.dataset.baseColor||rgbCssToHex(el.style.color)||'#111827'; $('#fontColor').value=color; $('#replacementText').value=el.textContent||''; $('#fontOpacity').value=Math.round((parseFloat(el.style.opacity||1))*100); $('#boxWidth').value=Math.round(parseFloat(el.style.width)||el.offsetWidth||220); $('#boxHeight').value=Math.round(parseFloat(el.style.height)||el.offsetHeight||32);
   }
   function closestFont(f=''){ const arr=['Arial','Calibri','Cambria','Times New Roman','Georgia','Verdana','Tahoma','Courier New','Poppins'];return arr.find(x=>f.toLowerCase().includes(x.toLowerCase()))||'Arial'; }
 
@@ -642,7 +662,7 @@
     el.style.backgroundImage=`url(${data})`;el.style.backgroundSize='100% 100%';el.style.backgroundRepeat='no-repeat';el.style.backgroundPosition='center';el.dataset.patch='true';el.dataset.patchData=data;if(color)el.dataset.backgroundColor=color;el.style.boxShadow='none';
   }
   function applyMatchedPatch(el=state.selectedText){
-    if(!el)return; const x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0,w=parseFloat(el.style.width)||120,h=parseFloat(el.style.minHeight)||25; const patch=makeBackgroundPatch(x,y,w,h); setPatchImage(el,patch.data,patch.color);
+    if(!el)return; const x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0,w=parseFloat(el.style.width)||120,h=parseFloat(el.style.height)||parseFloat(el.style.minHeight)||25; const patch=makeBackgroundPatch(x,y,w,h); setPatchImage(el,patch.data,patch.color);
   }
 
   function analyzeSelectedRegion(x,y,w,h,recognized=''){
@@ -731,7 +751,7 @@
     $('#drawReplaceBtn').textContent=state.drawMode?'✕ Cancel drawing':'▭ Draw replace box';
     if(notify){
       if(state.drawMode) toast('Draw mode: drag a rectangle tightly around the old text.');
-      else toast('Cursor mode: click a box to select it, drag to move, Delete to remove.');
+      else toast('Cursor mode: click a box to select, drag to move, resize from its bottom-right corner, Delete to remove.');
     }
   }
   function deleteSelectedBox(){
@@ -804,7 +824,7 @@
   $('#paper').addEventListener('dblclick',e=>{ if(state.drawMode||e.target.classList.contains('edit-text'))return; const rect=$('#paper').getBoundingClientRect(),scale=Number($('#paper').dataset.visualScale||1);makeEditableText('New text',(e.clientX-rect.left)/scale,(e.clientY-rect.top)/scale,220,32); });
   $('#addTextBtn').addEventListener('click',()=>makeEditableText());
   $('#matchBgBtn').addEventListener('click',()=>applyMatchedPatch());
-  $('#autoMatchBtn').addEventListener('click',()=>{if(!state.selectedText){toast('Select an editable text box first.');return;}const el=state.selectedText,x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0,w=parseFloat(el.style.width)||120,h=parseFloat(el.style.minHeight)||25,st=analyzeSelectedRegion(x,y,w,h,el.textContent||'');el.style.fontFamily=st.fontFamily;el.style.fontSize=st.fontSize+'px';el.style.fontWeight=st.fontWeight;el.dataset.baseColor=st.color;el.style.color=st.color;applyMatchedPatch(el);selectEditable(el);$('#detectedStyle').textContent=`Re-matched: ${st.fontFamily} • ~${st.fontSize}px • weight ${st.fontWeight} • text ${st.color} • background ${st.bg}.`;});
+  $('#autoMatchBtn').addEventListener('click',()=>{if(!state.selectedText){toast('Select an editable text box first.');return;}const el=state.selectedText,x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0,w=parseFloat(el.style.width)||120,h=parseFloat(el.style.height)||parseFloat(el.style.minHeight)||25,st=analyzeSelectedRegion(x,y,w,h,el.textContent||'');el.style.fontFamily=st.fontFamily;el.style.fontSize=st.fontSize+'px';el.style.fontWeight=st.fontWeight;el.dataset.baseColor=st.color;el.style.color=st.color;applyMatchedPatch(el);selectEditable(el);$('#detectedStyle').textContent=`Re-matched: ${st.fontFamily} • ~${st.fontSize}px • weight ${st.fontWeight} • text ${st.color} • background ${st.bg}.`;});
   $('#deleteTextBtn').addEventListener('click',deleteSelectedBox);
 
   $('#paper').addEventListener('pointerdown',e=>{
@@ -822,6 +842,15 @@
 
   function hexToRgb(hex){const m=hex.replace('#','');return {r:parseInt(m.slice(0,2),16),g:parseInt(m.slice(2,4),16),b:parseInt(m.slice(4,6),16)}}
   function adjustBrightness(hex,p){const {r,g,b}=hexToRgb(hex),f=p/100;return `rgb(${Math.min(255,Math.round(r*f))},${Math.min(255,Math.round(g*f))},${Math.min(255,Math.round(b*f))})`}
+  function setSelectedBoxSize(axis,value){
+    const el=state.selectedText;if(!el)return;
+    const c=$('#bgCanvas'),x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0;
+    if(axis==='w'){const v=clamp(parseFloat(value)||40,40,Math.max(40,c.width-x));el.style.width=v+'px';$('#boxWidth').value=Math.round(v);}
+    else{const v=clamp(parseFloat(value)||18,18,Math.max(18,c.height-y));el.style.height=v+'px';$('#boxHeight').value=Math.round(v);}
+    if(el.dataset.patch==='true')applyMatchedPatch(el);
+  }
+  $('#boxWidth').addEventListener('input',e=>setSelectedBoxSize('w',e.target.value));
+  $('#boxHeight').addEventListener('input',e=>setSelectedBoxSize('h',e.target.value));
   $('#replacementText').addEventListener('input',e=>{if(state.selectedText)state.selectedText.textContent=e.target.value;});
   $('#fontFamily').addEventListener('change',e=>{if(state.selectedText)state.selectedText.style.fontFamily=e.target.value});
   $('#fontSize').addEventListener('input',e=>{if(state.selectedText)state.selectedText.style.fontSize=e.target.value+'px'});
