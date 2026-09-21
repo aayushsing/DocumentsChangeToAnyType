@@ -174,15 +174,34 @@
     .editor-panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;align-self:start;position:sticky;top:100px}
     .editor-panel h4{margin:0 0 10px}.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.checkbox{display:flex;gap:8px;align-items:center;font-size:12px;color:#475569}.kbd{padding:2px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;background:#fff;font-size:10px}
     .detect-card{margin:10px 0;padding:10px;border:1px solid #c7d2fe;border-radius:10px;background:#eef2ff;color:#3730a3;font-size:11px;line-height:1.45}
+    .autosave-card{margin:10px 0;padding:11px;border:1px solid #bbf7d0;border-radius:11px;background:#f0fdf4;color:#166534;font-size:11px;line-height:1.45}
+    .autosave-card.saving{border-color:#fde68a;background:#fffbeb;color:#92400e}
+    .autosave-card.error{border-color:#fecaca;background:#fff7f7;color:#b91c1c}
+    .autosave-actions{display:flex;gap:7px;margin-top:8px}
+    .autosave-actions button{flex:1;border:1px solid #d1fae5;border-radius:8px;background:#fff;padding:7px 8px;font-size:10px;font-weight:800;color:#166534}
+    .autosave-actions button.clear{border-color:#fecaca;color:#b91c1c}
     .mini-btn.primary{background:#eef2ff;border-color:#818cf8;color:#4338ca}
     .ocr-output{white-space:pre-wrap;max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;font-size:12px;color:#334155;margin-top:10px}
     .thumbs{display:flex;gap:8px;overflow:auto;padding-bottom:4px}.thumb{border:1px solid var(--line);background:#fff;border-radius:9px;padding:5px;min-width:66px}.thumb.active{border-color:#6366f1;box-shadow:0 0 0 2px rgba(99,102,241,.12)}.thumb canvas{width:56px;height:auto;display:block}
 
+    .saved-docs{margin-top:10px;border:1px solid #dbeafe;border-radius:11px;background:#f8fbff;padding:9px}
+    .saved-docs-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;font-weight:850;color:#1e3a8a;margin-bottom:7px}
+    .saved-docs-list{display:grid;gap:6px;max-height:190px;overflow:auto}
+    .saved-doc-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center;padding:7px;border:1px solid #dbeafe;border-radius:9px;background:#fff}
+    .saved-doc-name{min-width:0;font-size:10px;font-weight:800;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .saved-doc-meta{display:block;font-size:9px;font-weight:500;color:#64748b;margin-top:2px}
+    .saved-doc-row button{border:1px solid #cbd5e1;border-radius:7px;background:#fff;padding:5px 7px;font-size:9px;font-weight:800;color:#334155}
+    .saved-doc-row button.restore{border-color:#a5b4fc;background:#eef2ff;color:#4338ca}
+    .saved-doc-row button.remove{border-color:#fecaca;background:#fff7f7;color:#b91c1c}
+    .floating-download{display:none;position:fixed;right:20px;top:92px;z-index:260;align-items:center;gap:9px;padding:9px 10px;border:1px solid #86efac;border-radius:14px;background:rgba(240,253,244,.98);box-shadow:0 18px 46px rgba(15,23,42,.20);backdrop-filter:blur(12px)}
+    .floating-download.show{display:flex}
+    .floating-download button{border:0;border-radius:10px;padding:11px 15px;background:#16a34a;color:white;font-weight:900;box-shadow:0 8px 20px rgba(22,163,74,.22)}
+    .floating-download .download-note{font-size:9px;line-height:1.25;color:#166534;max-width:125px}
     .footer{padding:20px 0 42px;color:var(--muted);font-size:12px;text-align:center}
     .toast{position:fixed;right:18px;bottom:18px;z-index:100;background:#0f172a;color:#fff;padding:12px 14px;border-radius:12px;box-shadow:0 12px 34px rgba(15,23,42,.25);opacity:0;transform:translateY(10px);pointer-events:none;transition:.25s;max-width:340px;font-size:12px}.toast.show{opacity:1;transform:none}
 
     @media(max-width:1050px){.tool-grid{grid-template-columns:repeat(3,1fr)}.workspace{grid-template-columns:1fr}.side{position:static}.editor-shell{grid-template-columns:1fr}.editor-panel{position:static}}
-    @media(max-width:680px){.match-toolbar-grid.tone-grid{grid-template-columns:1fr}.shell{width:min(100% - 20px,1440px)}.hero{padding-top:42px}.tool-grid{grid-template-columns:1fr 1fr}.workspace{padding-top:12px}.main-head{flex-direction:column}.stage{padding:12px}.doc-preview{padding:20px}.editor-shell{gap:9px}.canvas-scroll{padding:8px}}
+    @media(max-width:680px){.floating-download{top:auto;bottom:12px;right:12px;left:12px;justify-content:space-between}.floating-download .download-note{max-width:none}.match-toolbar-grid.tone-grid{grid-template-columns:1fr}.shell{width:min(100% - 20px,1440px)}.hero{padding-top:42px}.tool-grid{grid-template-columns:1fr 1fr}.workspace{padding-top:12px}.main-head{flex-direction:column}.stage{padding:12px}.doc-preview{padding:20px}.editor-shell{gap:9px}.canvas-scroll{padding:8px}}
   </style>
 </head>
 <body>
@@ -226,6 +245,10 @@
           <div class="progress-text"><span id="progressLabel">Working…</span><span id="progressPct">0%</span></div>
         </div>
         <div class="notice" id="qualityNote">For visually identical output, use <b>Visual preserve</b>. Editable OCR/text conversion can approximate layout but cannot perfectly reproduce every embedded font or complex scan automatically in a browser.</div>
+        <div class="saved-docs" id="globalSavedDocsPanel" style="margin-top:12px">
+          <div class="saved-docs-head"><span>Saved scan projects · up to 30 days</span><span id="globalSavedDocsCount">0</span></div>
+          <div class="saved-docs-list" id="globalSavedDocsList"><div class="small">No saved scan projects yet.</div></div>
+        </div>
       </aside>
 
       <main class="panel main">
@@ -248,6 +271,12 @@
               <div class="row2" style="margin-top:12px"><button class="mini-btn active" id="selectModeBtn">↖ Cursor / Select</button><button class="mini-btn primary" id="drawReplaceBtn">▭ Draw replace box</button></div>
               <div class="row2" style="margin-top:8px"><button class="mini-btn danger" id="deleteBoxBtn">🗑 Delete selected box</button><button class="mini-btn" id="autoMatchBtn">↻ Auto-match selected</button></div>
               <div class="detect-card" id="detectedStyle">Use <b>Cursor / Select</b> to click or move a box. Use <b>Draw replace box</b> to create a new replacement area.</div>
+              <div class="autosave-card" id="autosaveStatus">💾 Local recovery is ready. Your scan edits will be saved automatically in this browser.</div>
+              <div class="autosave-actions"><button id="saveNowBtn" type="button">Save now</button><button id="clearSavedBtn" class="clear" type="button">Clear quick restore</button></div>
+              <div class="saved-docs" id="savedDocsPanel">
+                <div class="saved-docs-head"><span>Recent saved documents</span><span id="savedDocsCount">0</span></div>
+                <div class="saved-docs-list" id="savedDocsList"><div class="small">No saved documents yet.</div></div>
+              </div>
               <div class="form-row"><label>Replacement text</label><textarea id="replacementText" rows="3" placeholder="Draw a box first, then type the new text here."></textarea></div>
               <div class="row2"><div class="form-row"><label>Box width / length</label><input id="boxWidth" type="number" min="40" max="5000" value="220"></div><div class="form-row"><label>Box height / breadth</label><input id="boxHeight" type="number" min="18" max="5000" value="32"></div></div>
               <div class="small">Tip: select a box and drag its <b>bottom-right corner</b> to resize freely, or enter exact width/height above.</div>
@@ -274,6 +303,10 @@
     </section>
 
     <footer class="footer">DocMorph Studio • single-file client-side prototype • best results with clean high-resolution scans.</footer>
+  </div>
+  <div class="floating-download" id="floatingDownloadBar">
+    <button id="fixedDownloadEditedBtn" type="button">⬇ DOWNLOAD EDITED FILE</button>
+    <div class="download-note" id="fixedDownloadNote">PDF → edited PDF<br>Image → edited PNG</div>
   </div>
   <div class="match-toolbar" id="floatingMatchToolbar" aria-live="polite">
     <div class="match-toolbar-head"><span>Live text match — updates the box while you type</span><span id="floatingMatchStatus">Selected</span></div>
@@ -334,6 +367,10 @@
     originalImageType: 'image/png',
     scale: 1.5,
     busy: false,
+    restoringSession: false,
+    autosaveTimer: null,
+    autosaveAvailable: true,
+    recoveryDocId: null,
   };
 
   const tools = {
@@ -380,8 +417,211 @@
   function fileToArrayBuffer(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsArrayBuffer(file); }); }
   function imageFromUrl(src){ return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>res(img); img.onerror=rej; img.src=src; }); }
 
+
+  // ---------- local autosave / refresh recovery ----------
+  const AUTOSAVE_DB='DocMorphRecoveryDB';
+  const AUTOSAVE_VERSION=2;
+  const RECOVERY_KEEP_MS=30*24*60*60*1000;
+  const RECOVERY_MAX_DOCS=12;
+  const AUTOSAVE_SESSION_KEY='current-session';
+  const AUTOSAVE_SOURCE_KEY='current-source';
+  let autosaveDbPromise=null;
+
+  function setAutosaveStatus(message,mode='ok'){
+    const el=$('#autosaveStatus'); if(!el) return;
+    el.textContent=message;
+    el.classList.toggle('saving',mode==='saving');
+    el.classList.toggle('error',mode==='error');
+  }
+  function formatSavedTime(ts){
+    try{return new Date(ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});}catch(_e){return '';}
+  }
+  function openAutosaveDb(){
+    if(autosaveDbPromise) return autosaveDbPromise;
+    autosaveDbPromise=new Promise((resolve,reject)=>{
+      if(!('indexedDB' in window)){reject(new Error('IndexedDB is not available'));return;}
+      const req=indexedDB.open(AUTOSAVE_DB,AUTOSAVE_VERSION);
+      req.onupgradeneeded=()=>{
+        const db=req.result;
+        if(!db.objectStoreNames.contains('source')) db.createObjectStore('source');
+        if(!db.objectStoreNames.contains('session')) db.createObjectStore('session');
+        if(!db.objectStoreNames.contains('documents')) db.createObjectStore('documents');
+      };
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error||new Error('Could not open local recovery storage'));
+    });
+    return autosaveDbPromise;
+  }
+  async function autosavePut(store,key,value){
+    const db=await openAutosaveDb();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(store,'readwrite');
+      tx.objectStore(store).put(value,key);
+      tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error||new Error('Local save failed'));tx.onabort=()=>reject(tx.error||new Error('Local save aborted'));
+    });
+  }
+  async function autosaveGet(store,key){
+    const db=await openAutosaveDb();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(store,'readonly'),req=tx.objectStore(store).get(key);
+      req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('Local recovery read failed'));
+    });
+  }
+  async function autosaveDelete(store,key){
+    const db=await openAutosaveDb();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(store,'readwrite');tx.objectStore(store).delete(key);
+      tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error||new Error('Could not clear local recovery'));
+    });
+  }
+  async function autosaveGetAll(store){
+    const db=await openAutosaveDb();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(store,'readonly'),req=tx.objectStore(store).getAll();
+      req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error||new Error('Local recovery list failed'));
+    });
+  }
+  function makeRecoveryDocId(file){
+    return `${file?.name||'document'}__${file?.size||0}__${file?.lastModified||Date.now()}`.replace(/[^a-zA-Z0-9_.-]/g,'_');
+  }
+  async function cleanupSavedDocuments(){
+    try{
+      const docs=(await autosaveGetAll('documents')).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+      const cutoff=Date.now()-RECOVERY_KEEP_MS;
+      const removals=[];
+      docs.forEach((d,i)=>{if((d.updatedAt||0)<cutoff || i>=RECOVERY_MAX_DOCS) removals.push(d.id);});
+      await Promise.all(removals.map(id=>autosaveDelete('documents',id)));
+    }catch(err){console.warn('Recovery cleanup skipped',err);}
+  }
+  async function renderSavedDocuments(){
+    const targets=[
+      {list:$('#savedDocsList'),count:$('#savedDocsCount'),empty:'No saved documents yet.'},
+      {list:$('#globalSavedDocsList'),count:$('#globalSavedDocsCount'),empty:'No saved scan projects yet.'}
+    ].filter(x=>x.list&&x.count);
+    if(!targets.length)return;
+    try{
+      const docs=(await autosaveGetAll('documents')).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+      targets.forEach(t=>{
+        t.count.textContent=String(docs.length);
+        if(!docs.length){t.list.innerHTML=`<div class="small">${t.empty}</div>`;return;}
+        t.list.innerHTML='';
+        docs.forEach(doc=>{
+          const row=document.createElement('div');row.className='saved-doc-row';
+          const info=document.createElement('div');info.className='saved-doc-name';info.title=doc.name||'Saved document';
+          info.textContent=doc.name||'Saved document';
+          const meta=document.createElement('span');meta.className='saved-doc-meta';meta.textContent=`Saved ${doc.updatedAt?new Date(doc.updatedAt).toLocaleString():'locally'}`;info.appendChild(meta);
+          const restore=document.createElement('button');restore.className='restore';restore.textContent='Continue';restore.addEventListener('click',()=>restoreSavedDocument(doc.id));
+          const remove=document.createElement('button');remove.className='remove';remove.textContent='Delete';remove.addEventListener('click',()=>deleteSavedDocument(doc.id));
+          row.append(info,restore,remove);t.list.appendChild(row);
+        });
+      });
+    }catch(err){console.error(err);targets.forEach(t=>t.list.innerHTML='<div class="small">Saved-document list unavailable.</div>');}
+  }
+  async function deleteSavedDocument(id){
+    try{await autosaveDelete('documents',id);if(state.recoveryDocId===id)state.recoveryDocId=null;await renderSavedDocuments();toast('Saved document removed from local recovery.');}catch(err){console.error(err);toast('Could not remove saved document.');}
+  }
+  async function restoreSavedDocument(id){
+    try{
+      const doc=await autosaveGet('documents',id);if(!doc?.source?.blob||!doc?.session)return;
+      state.restoringSession=true;applyTool('scan-edit');state.recoveryDocId=id;
+      const src=doc.source,session=doc.session;
+      const file=new File([src.blob],src.name||doc.name||'recovered-document',{type:src.type||src.blob.type||'application/octet-stream',lastModified:src.lastModified||Date.now()});
+      state.files=[file];state.recoveryDocId=makeRecoveryDocId(file);state.originalFileName=session.originalFileName||baseName(file.name);state.originalImageType=session.originalImageType||file.type||'image/png';renderFileList();
+      setAutosaveStatus('↻ Restoring saved document…','saving');await openScanEditor(session,true);
+      setAutosaveStatus(`✓ Restored ${doc.name||file.name} — autosave is active.`,'ok');toast('Saved document restored.');
+    }catch(err){console.error(err);setAutosaveStatus('Could not restore this saved document.','error');}
+    finally{state.restoringSession=false;renderSavedDocuments();}
+  }
+
+  async function saveSourceForRecovery(file){
+    if(!file) return;
+    try{
+      state.recoveryDocId=makeRecoveryDocId(file);
+      const sourceRecord={blob:file,name:file.name,type:file.type||'',lastModified:file.lastModified||Date.now(),size:file.size||0,savedAt:Date.now()};
+      await autosavePut('source',AUTOSAVE_SOURCE_KEY,sourceRecord);
+      const existing=await autosaveGet('documents',state.recoveryDocId).catch(()=>null);
+      await autosavePut('documents',state.recoveryDocId,{id:state.recoveryDocId,name:file.name,source:sourceRecord,session:existing?.session||null,createdAt:existing?.createdAt||Date.now(),updatedAt:Date.now()});
+      await cleanupSavedDocuments();await renderSavedDocuments();
+      state.autosaveAvailable=true;
+      // Ask the browser to make site storage less likely to be evicted. It may return false and that is fine.
+      if(navigator.storage?.persist) navigator.storage.persist().catch(()=>{});
+    }catch(err){
+      console.error('Source recovery save failed',err);state.autosaveAvailable=false;
+      setAutosaveStatus('⚠ Automatic recovery could not store the uploaded file in this browser. Export your edited file before closing.','error');
+    }
+  }
+  function buildRecoveryPayload(){
+    return {
+      version:1,
+      savedAt:Date.now(),
+      originalFileName:state.originalFileName,
+      originalImageType:state.originalImageType,
+      editorSourceType:state.editorSourceType,
+      editorPage:state.editorPage,
+      editorEdits:state.editorEdits,
+      tool:'scan-edit'
+    };
+  }
+  async function saveEditorRecovery(showToast=false){
+    if(state.restoringSession || !state.editorPages.length || !state.autosaveAvailable) return;
+    try{
+      serializeCurrentPageEdits();
+      setAutosaveStatus('💾 Saving edits locally…','saving');
+      const payload=buildRecoveryPayload();
+      await autosavePut('session',AUTOSAVE_SESSION_KEY,payload);
+      if(state.recoveryDocId){
+        const doc=await autosaveGet('documents',state.recoveryDocId).catch(()=>null);
+        if(doc){doc.session=payload;doc.updatedAt=payload.savedAt;await autosavePut('documents',state.recoveryDocId,doc);}
+      }
+      await renderSavedDocuments();
+      setAutosaveStatus(`✓ Saved locally at ${formatSavedTime(payload.savedAt)} — safe to refresh or reopen.`,'ok');
+      if(showToast) toast('Edits saved locally.');
+    }catch(err){
+      console.error('Autosave failed',err);
+      setAutosaveStatus('⚠ Autosave failed. Download your edited file before leaving this page.','error');
+    }
+  }
+  function scheduleAutosave(delay=450){
+    if(state.restoringSession || !state.editorPages.length || !state.autosaveAvailable) return;
+    clearTimeout(state.autosaveTimer);
+    setAutosaveStatus('💾 Changes detected — saving…','saving');
+    state.autosaveTimer=setTimeout(()=>saveEditorRecovery(false),delay);
+  }
+  async function clearEditorRecovery(showToast=true){
+    clearTimeout(state.autosaveTimer);
+    try{
+      await Promise.all([autosaveDelete('session',AUTOSAVE_SESSION_KEY),autosaveDelete('source',AUTOSAVE_SOURCE_KEY)]);
+      setAutosaveStatus('Current quick-recovery pointer cleared. Recent saved documents remain below.','ok');
+      if(showToast) toast('Current quick recovery cleared. Saved documents are still available below.');
+    }catch(err){console.error(err);setAutosaveStatus('Could not clear local recovery.','error');}
+  }
+  async function restoreEditorRecovery(){
+    try{
+      const [src,session]=await Promise.all([autosaveGet('source',AUTOSAVE_SOURCE_KEY),autosaveGet('session',AUTOSAVE_SESSION_KEY)]);
+      if(!src?.blob || !session?.editorEdits) return false;
+      state.restoringSession=true;
+      applyTool('scan-edit');
+      const file=new File([src.blob],src.name||'recovered-document',{type:src.type||src.blob.type||'application/octet-stream',lastModified:src.lastModified||Date.now()});
+      state.files=[file];state.recoveryDocId=makeRecoveryDocId(file);state.originalFileName=session.originalFileName||baseName(file.name);state.originalImageType=session.originalImageType||file.type||'image/png';
+      const oldDoc=await autosaveGet('documents',state.recoveryDocId).catch(()=>null);
+      if(!oldDoc) await autosavePut('documents',state.recoveryDocId,{id:state.recoveryDocId,name:file.name,source:src,session,createdAt:session.savedAt||Date.now(),updatedAt:session.savedAt||Date.now()});
+      renderFileList();
+      setAutosaveStatus('↻ Restoring your last scanned-document editing session…','saving');
+      await openScanEditor(session,true);
+      setAutosaveStatus(`✓ Restored edits saved ${session.savedAt?formatSavedTime(session.savedAt):'previously'} — autosave is active.`,'ok');
+      toast('Previous scan edits restored.');
+      await renderSavedDocuments();
+      return true;
+    }catch(err){
+      console.error('Recovery restore failed',err);
+      setAutosaveStatus('Could not restore the previous local session. You can upload the document again.','error');
+      return false;
+    }finally{state.restoringSession=false;}
+  }
+
   function applyTool(tool){
     state.tool = tool;
+    if(tool!=='scan-edit') $('#floatingDownloadBar')?.classList.remove('show');
     $$('.tool-card').forEach(c=>c.classList.toggle('active', c.dataset.tool===tool));
     $('#sideTitle').textContent = tools[tool].title;
     $('#sideDesc').textContent = tools[tool].desc;
@@ -400,10 +640,12 @@
   dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('drag');handleFiles([...e.dataTransfer.files])});
   fi.addEventListener('change', ()=>handleFiles([...fi.files]));
 
-  function handleFiles(files){
+  async function handleFiles(files){
     if(!files.length) return;
+    if(state.editorPages.length) await saveEditorRecovery(false);
     const allowed = ['pdf','docx','png','jpg','jpeg','webp'];
     state.files = files.filter(f=>allowed.includes(ext(f.name)));
+    state.recoveryDocId=null;
     if(!state.files.length){ toast('Please upload PDF, DOCX, PNG, JPG or WEBP.'); return; }
     state.originalFileName = baseName(state.files[0].name);
     renderFileList();
@@ -550,11 +792,19 @@
   }
 
   // ---------- scan editor ----------
-  async function openScanEditor(){
-    const file=state.files[0]; if(!['pdf','png','jpg','jpeg','webp'].includes(ext(file.name))) throw new Error('PDF or image required');
-    const src=await sourcePagesAsCanvases(file,1.55); state.editorPages=src.pages; state.editorPdf=src.pdf; state.editorPage=0; state.editorEdits={}; state.selectedText=null; state.drawMode=false; state.editorMode='select'; state.editorSourceType=ext(file.name)==='pdf'?'pdf':'image'; state.originalImageType=file.type||'image/png';
-    $('#previewWrap').innerHTML=''; $('#emptyState').style.display='none'; $('#editorShell').classList.add('open'); $('#mainTitle').textContent='Smart scanned document editor'; $('#mainSub').textContent='Draw a box over text → auto-detect style → type replacement → download.';
-    renderThumbs(); loadEditorPage(0); setProgress(100,'Editor ready');
+  async function openScanEditor(savedSession=null,skipSourceSave=false){
+    const file=state.files[0]; if(!file || !['pdf','png','jpg','jpeg','webp'].includes(ext(file.name))) throw new Error('PDF or image required');
+    const src=await sourcePagesAsCanvases(file,1.55);
+    state.editorPages=src.pages; state.editorPdf=src.pdf;
+    state.editorPage=clamp(savedSession?.editorPage ?? 0,0,Math.max(0,src.pages.length-1));
+    state.editorEdits=savedSession?.editorEdits ? structuredClone(savedSession.editorEdits) : {};
+    state.selectedText=null; state.drawMode=false; state.editorMode='select'; state.editorSourceType=ext(file.name)==='pdf'?'pdf':'image'; state.originalImageType=savedSession?.originalImageType||file.type||'image/png';
+    $('#previewWrap').innerHTML=''; $('#emptyState').style.display='none'; $('#editorShell').classList.add('open'); $('#mainTitle').textContent='Smart scanned document editor'; $('#mainSub').textContent='Draw a box over text → auto-detect style → type replacement → autosaved locally.';
+    $('#floatingDownloadBar')?.classList.add('show');
+    if($('#fixedDownloadNote')) $('#fixedDownloadNote').innerHTML=state.editorSourceType==='pdf'?'PDF → edited PDF<br>Always visible':'Image → edited PNG<br>Always visible';
+    renderThumbs(); loadEditorPage(state.editorPage); setProgress(100,'Editor ready');
+    if(!skipSourceSave) await saveSourceForRecovery(file);
+    if(!savedSession) scheduleAutosave(50);
   }
 
   function renderThumbs(){
@@ -595,7 +845,7 @@
     requestAnimationFrame(()=>{const max=Math.max(280,$('#canvasScroll').clientWidth-40); const s=Math.min(1,max/src.width); paper.style.transform=`scale(${s})`; paper.style.marginBottom=`${-(src.height*(1-s))}px`; paper.dataset.visualScale=s;});
     renderThumbs();
   }
-  function saveAndSwitchPage(i){ serializeCurrentPageEdits(); loadEditorPage(i); }
+  function saveAndSwitchPage(i){ serializeCurrentPageEdits(); loadEditorPage(i); scheduleAutosave(120); }
 
   function makeEditableText(text='Type here',x=50,y=50,w=220,h=32,opts={}){
     const el=document.createElement('div');
@@ -649,7 +899,8 @@
     });
     const endDrag=e=>{
       if(!drag || (e.pointerId!=null && e.pointerId!==drag.id)) return;
-      drag=null;
+      const changed=drag.moved;drag=null;
+      if(changed) scheduleAutosave(250);
     };
     el.addEventListener('pointerup',endDrag);
     el.addEventListener('pointercancel',endDrag);
@@ -665,7 +916,7 @@
       if(Math.abs(nw-lastW)<1 && Math.abs(nh-lastH)<1)return;
       lastW=nw;lastH=nh;el.style.width=nw+'px';el.style.height=nh+'px';
       if(state.selectedText===el){$('#boxWidth').value=nw;$('#boxHeight').value=nh;scheduleMatchToolbarPosition();updateFloatingMatchPreview(el);}
-      clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(el.isConnected && el.dataset.patch==='true')applyMatchedPatch(el);},140);
+      clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(el.isConnected && el.dataset.patch==='true')applyMatchedPatch(el);scheduleAutosave(260);},140);
     });
     ro.observe(el);
 
@@ -1102,6 +1353,15 @@
   window.addEventListener('scroll',scheduleMatchToolbarPosition,true);
   $('#canvasScroll').addEventListener('scroll',scheduleMatchToolbarPosition,{passive:true});
 
+
+  // Watch every text-box DOM change (text, position, size, colour, blur, patch, add/delete) and debounce a local save.
+  const recoveryObserver=new MutationObserver(()=>scheduleAutosave(420));
+  recoveryObserver.observe($('#overlayLayer'),{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['style','data-base-color','data-brightness','data-darkness','data-softness','data-scale-x','data-scale-y','data-patch','data-patch-data','data-background-color']});
+  $('#saveNowBtn').addEventListener('click',()=>saveEditorRecovery(true));
+  $('#clearSavedBtn').addEventListener('click',()=>clearEditorRecovery(true));
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveEditorRecovery(false);});
+  window.addEventListener('pagehide',()=>{if(state.editorPages.length)saveEditorRecovery(false);});
+
   $('#ocrLayerBtn').addEventListener('click', async()=>{
     if(!state.editorPages.length)return;
     const lang=$('#ocrLang')?.value||'eng'; let worker;
@@ -1132,6 +1392,8 @@
     const c=await html2canvas(paper,{scale:1,backgroundColor:null,useCORS:true,logging:false});paper.style.transform=old;paper.style.marginBottom=oldMB;return c;
   }
 
+  $('#fixedDownloadEditedBtn').addEventListener('click',()=>$('#exportEditedBtn').click());
+
   $('#exportEditedBtn').addEventListener('click',async()=>{
     if(!state.editorPages.length)return;
     const originalPage=state.editorPage;
@@ -1151,8 +1413,9 @@
     finally{serializeCurrentPageEdits();loadEditorPage(Math.min(originalPage,state.editorPages.length-1));}
   });
 
-  // Make options available immediately
+  // Make options available immediately, then recover the last scan-editing session automatically.
   applyTool('pdf-word');
+  setTimeout(async()=>{await cleanupSavedDocuments();await renderSavedDocuments();await restoreEditorRecovery();await renderSavedDocuments();},80);
 })();
 </script>
 </body>
