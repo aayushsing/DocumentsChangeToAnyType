@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DocMorph Studio — PDF, Word, Image & Scanned Document Editor</title>
+  <title>DocMorph Studio v2 — Smart Scanned PDF Editor</title>
   <meta name="description" content="Convert PDF, Word, images and scanned documents directly in your browser. OCR, edit scanned pages while preserving the background, and export easily." />
 
   <!-- Browser-side libraries. The app itself remains one index.html file. -->
@@ -127,7 +127,9 @@
     .paper.draw-mode{cursor:crosshair}
     .paper canvas{display:block;max-width:none}
     .overlay-layer{position:absolute;inset:0;pointer-events:none}
-    .selection-box{position:absolute;border:2px solid #4f46e5;background:rgba(79,70,229,.10);box-shadow:0 0 0 1px rgba(255,255,255,.85) inset;z-index:20;pointer-events:none}
+    .draw-surface{position:absolute;inset:0;z-index:50;pointer-events:none;touch-action:none;background:transparent}
+    .paper.draw-mode .draw-surface{pointer-events:auto;cursor:crosshair}
+    .selection-box{position:absolute;border:2px solid #4f46e5;background:rgba(79,70,229,.12);box-shadow:0 0 0 1px rgba(255,255,255,.9) inset;z-index:60;pointer-events:none}
     .edit-text{
       position:absolute;min-width:40px;min-height:20px;padding:1px 2px;outline:1px dashed transparent;
       white-space:pre-wrap;line-height:1.05;pointer-events:auto;cursor:text;transform-origin:left top;z-index:5;overflow:visible
@@ -203,11 +205,11 @@
           <div class="editor-shell" id="editorShell">
             <div>
               <div class="thumbs" id="thumbs"></div>
-              <div class="canvas-scroll" id="canvasScroll"><div class="paper" id="paper"><canvas id="bgCanvas"></canvas><div class="overlay-layer" id="overlayLayer"></div></div></div>
+              <div class="canvas-scroll" id="canvasScroll"><div class="paper" id="paper"><canvas id="bgCanvas"></canvas><div class="overlay-layer" id="overlayLayer"></div><div class="draw-surface" id="drawSurface" aria-label="Draw replacement area"></div></div></div>
             </div>
             <div class="editor-panel">
               <h4>Smart text replacement</h4>
-              <div class="small">Click <b>Draw replace box</b>, then drag a box over the text you want to change. The editor OCRs that area, samples the background and text colour, estimates font size/weight/family, erases the old pixels, and prepares matching replacement text.</div>
+              <div class="small">Click <b>Draw replace box</b>, then drag directly over the old text. A blue selection rectangle should appear immediately. The editor OCRs that area, samples the background and text colour, estimates font size/weight/family, erases the old pixels, and prepares matching replacement text.</div>
               <div class="row2" style="margin-top:12px"><button class="mini-btn primary" id="drawReplaceBtn">▭ Draw replace box</button><button class="mini-btn" id="autoMatchBtn">↻ Auto-match selected</button></div>
               <div class="detect-card" id="detectedStyle">Draw a box over existing text to auto-detect its style.</div>
               <div class="form-row"><label>Replacement text</label><textarea id="replacementText" rows="3" placeholder="Draw a box first, then type the new text here."></textarea></div>
@@ -612,25 +614,117 @@
   }
 
   async function smartReplaceBox(x,y,w,h){
-    if(w<8||h<8)return; let worker; const lang=$('#ocrLang')?.value||'eng'; const crop=document.createElement('canvas');crop.width=Math.max(1,Math.round(w));crop.height=Math.max(1,Math.round(h));crop.getContext('2d').drawImage($('#bgCanvas'),x,y,w,h,0,0,crop.width,crop.height);
+    if(w<8||h<8)return;
+
+    // Create the replacement immediately so the editor never feels "stuck" while OCR loads.
+    const firstStyle=analyzeSelectedRegion(x,y,w,h,'');
+    const patch=makeBackgroundPatch(x,y,w,h);
+    const el=makeEditableText('',x,y,w,h,{fontFamily:firstStyle.fontFamily,fontSize:firstStyle.fontSize,fontWeight:firstStyle.fontWeight,color:firstStyle.color,autoPatch:false});
+    setPatchImage(el,patch.data,patch.color);
+    el.textContent='';
+    selectEditable(el);
+    $('#fontBrightness').value=100;
+    $('#brightValue').textContent='100%';
+    $('#replacementText').value='';
+    $('#detectedStyle').textContent=`Area selected: ~${firstStyle.fontSize}px • weight ${firstStyle.fontWeight} • text ${firstStyle.color} • background ${firstStyle.bg}. OCR is reading the original text…`;
+    $('#replacementText').focus();
+    toast('Area selected. You can type replacement text now.');
+
+    let worker;
+    const lang=$('#ocrLang')?.value||'eng';
+    const crop=document.createElement('canvas');
+    crop.width=Math.max(1,Math.round(w));
+    crop.height=Math.max(1,Math.round(h));
+    crop.getContext('2d').drawImage($('#bgCanvas'),x,y,w,h,0,0,crop.width,crop.height);
     let text='';
-    try{setProgress(8,'Reading selected text');worker=await getOcrWorker(lang);const r=await worker.recognize(crop);text=(r.data.text||'').replace(/\n+/g,' ').replace(/\s+/g,' ').trim();}catch(err){console.warn('Selection OCR failed',err);}finally{if(worker)await worker.terminate();}
-    const st=analyzeSelectedRegion(x,y,w,h,text); const patch=makeBackgroundPatch(x,y,w,h); const el=makeEditableText(text||'Type replacement',x,y,w,h,{fontFamily:st.fontFamily,fontSize:st.fontSize,fontWeight:st.fontWeight,color:st.color,autoPatch:false}); setPatchImage(el,patch.data,patch.color);
-    $('#fontBrightness').value=100;$('#brightValue').textContent='100%';$('#detectedStyle').textContent=`Detected: ${st.fontFamily} • ~${st.fontSize}px • weight ${st.fontWeight} • text ${st.color} • background ${st.bg}. Type your replacement below.`;
-    $('#replacementText').value=text||''; $('#replacementText').focus(); $('#replacementText').select(); setProgress(100,'Style matched'); toast('Text area detected. Type the replacement text.');
+    try{
+      setProgress(8,'Reading selected text');
+      worker=await getOcrWorker(lang);
+      const r=await worker.recognize(crop);
+      text=(r.data.text||'').replace(/\n+/g,' ').replace(/\s+/g,' ').trim();
+      const st=analyzeSelectedRegion(x,y,w,h,text);
+      el.style.fontFamily=st.fontFamily;
+      el.style.fontSize=st.fontSize+'px';
+      el.style.fontWeight=st.fontWeight;
+      el.dataset.baseColor=st.color;
+      el.style.color=st.color;
+      if(text && !(el.textContent||'').trim()){
+        el.textContent=text;
+        $('#replacementText').value=text;
+        $('#replacementText').select();
+      }
+      selectEditable(el);
+      $('#detectedStyle').textContent=`Detected: ${st.fontFamily} • ~${st.fontSize}px • weight ${st.fontWeight} • text ${st.color} • background ${st.bg}. Replace the text below.`;
+      setProgress(100,'Style matched');
+    }catch(err){
+      console.warn('Selection OCR failed',err);
+      $('#detectedStyle').textContent=`Style matched from image pixels. OCR could not read this selection, but you can type the replacement manually. Approx. ${firstStyle.fontFamily} • ${firstStyle.fontSize}px • ${firstStyle.color}.`;
+      setProgress(100,'Area ready');
+      toast('Box is ready. OCR failed, so type the replacement manually.');
+    }finally{
+      if(worker)try{await worker.terminate();}catch(_e){}
+    }
   }
 
-  function setDrawMode(on){state.drawMode=on;$('#paper').classList.toggle('draw-mode',on);$('#drawReplaceBtn').classList.toggle('active',on);$('#drawReplaceBtn').textContent=on?'✕ Cancel drawing':'▭ Draw replace box';if(on)toast('Drag a box tightly around the text you want to replace.');}
-  $('#drawReplaceBtn').addEventListener('click',()=>setDrawMode(!state.drawMode));
-  $('#paper').addEventListener('pointerdown',e=>{
-    if(!state.drawMode)return; e.preventDefault();e.stopPropagation(); const rect=$('#paper').getBoundingClientRect(),scale=Number($('#paper').dataset.visualScale||1),x=(e.clientX-rect.left)/scale,y=(e.clientY-rect.top)/scale;state.drawStart={x,y};const box=document.createElement('div');box.className='selection-box';box.style.left=x+'px';box.style.top=y+'px';box.style.width='1px';box.style.height='1px';$('#overlayLayer').appendChild(box);state.drawBox=box;$('#paper').setPointerCapture?.(e.pointerId);
-  },true);
-  $('#paper').addEventListener('pointermove',e=>{
-    if(!state.drawMode||!state.drawStart||!state.drawBox)return; const rect=$('#paper').getBoundingClientRect(),scale=Number($('#paper').dataset.visualScale||1),cx=(e.clientX-rect.left)/scale,cy=(e.clientY-rect.top)/scale,x=Math.min(state.drawStart.x,cx),y=Math.min(state.drawStart.y,cy),w=Math.abs(cx-state.drawStart.x),h=Math.abs(cy-state.drawStart.y);Object.assign(state.drawBox.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px'});
-  },true);
-  $('#paper').addEventListener('pointerup',e=>{
-    if(!state.drawMode||!state.drawStart)return; const b=state.drawBox,x=parseFloat(b?.style.left)||0,y=parseFloat(b?.style.top)||0,w=parseFloat(b?.style.width)||0,h=parseFloat(b?.style.height)||0;b?.remove();state.drawBox=null;state.drawStart=null;setDrawMode(false);if(w>=8&&h>=8)smartReplaceBox(x,y,w,h);
-  },true);
+  function setDrawMode(on){
+    state.drawMode=!!on;
+    state.drawStart=null;
+    if(state.drawBox){state.drawBox.remove();state.drawBox=null;}
+    $('#paper').classList.toggle('draw-mode',state.drawMode);
+    $('#drawReplaceBtn').classList.toggle('active',state.drawMode);
+    $('#drawReplaceBtn').textContent=state.drawMode?'✕ Cancel drawing':'▭ Draw replace box';
+    if(state.drawMode) toast('Now drag directly over the old text.');
+  }
+  $('#drawReplaceBtn').addEventListener('click',()=>{
+    if(!state.editorPages.length){toast('Open a scanned PDF or image first.');return;}
+    setDrawMode(!state.drawMode);
+  });
+
+  const drawSurface=$('#drawSurface');
+  function pointOnPaper(e){
+    const rect=$('#paper').getBoundingClientRect();
+    const scale=Number($('#paper').dataset.visualScale||1) || 1;
+    return {
+      x:clamp((e.clientX-rect.left)/scale,0,$('#bgCanvas').width),
+      y:clamp((e.clientY-rect.top)/scale,0,$('#bgCanvas').height)
+    };
+  }
+  function beginReplaceDraw(e){
+    if(!state.drawMode)return;
+    e.preventDefault();e.stopPropagation();
+    const p=pointOnPaper(e);
+    state.drawStart=p;
+    const box=document.createElement('div');
+    box.className='selection-box';
+    Object.assign(box.style,{left:p.x+'px',top:p.y+'px',width:'1px',height:'1px'});
+    $('#paper').appendChild(box);
+    state.drawBox=box;
+    try{drawSurface.setPointerCapture(e.pointerId);}catch(_e){}
+  }
+  function moveReplaceDraw(e){
+    if(!state.drawMode||!state.drawStart||!state.drawBox)return;
+    e.preventDefault();
+    const p=pointOnPaper(e);
+    const x=Math.min(state.drawStart.x,p.x),y=Math.min(state.drawStart.y,p.y);
+    const w=Math.abs(p.x-state.drawStart.x),h=Math.abs(p.y-state.drawStart.y);
+    Object.assign(state.drawBox.style,{left:x+'px',top:y+'px',width:w+'px',height:h+'px'});
+  }
+  function finishReplaceDraw(e){
+    if(!state.drawMode||!state.drawStart)return;
+    if(e){e.preventDefault();e.stopPropagation();}
+    const b=state.drawBox;
+    const x=parseFloat(b?.style.left)||0,y=parseFloat(b?.style.top)||0,w=parseFloat(b?.style.width)||0,h=parseFloat(b?.style.height)||0;
+    if(b)b.remove();
+    state.drawBox=null;state.drawStart=null;
+    setDrawMode(false);
+    if(w>=8&&h>=8) smartReplaceBox(x,y,w,h);
+    else toast('Draw a slightly larger box around the text.');
+  }
+  drawSurface.addEventListener('pointerdown',beginReplaceDraw);
+  drawSurface.addEventListener('pointermove',moveReplaceDraw);
+  drawSurface.addEventListener('pointerup',finishReplaceDraw);
+  drawSurface.addEventListener('pointercancel',finishReplaceDraw);
+  drawSurface.addEventListener('lostpointercapture',e=>{if(state.drawMode&&state.drawStart)finishReplaceDraw(e);});
 
   $('#paper').addEventListener('dblclick',e=>{ if(state.drawMode||e.target.classList.contains('edit-text'))return; const rect=$('#paper').getBoundingClientRect(),scale=Number($('#paper').dataset.visualScale||1);makeEditableText('New text',(e.clientX-rect.left)/scale,(e.clientY-rect.top)/scale,220,32); });
   $('#addTextBtn').addEventListener('click',()=>makeEditableText());
