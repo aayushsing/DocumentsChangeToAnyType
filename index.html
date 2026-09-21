@@ -137,6 +137,7 @@
       position:absolute;min-width:40px;min-height:20px;padding:1px 2px;outline:1px dashed transparent;
       white-space:pre-wrap;line-height:1.05;pointer-events:auto;cursor:move;transform-origin:left top;z-index:25;overflow:visible
     }
+    .edit-text .edit-text-content{display:inline-block;white-space:pre-wrap;line-height:inherit;transform-origin:left top;transform:scale(var(--text-scale-x,1),var(--text-scale-y,1));}
     .edit-text:hover{outline:1px dashed rgba(79,70,229,.65)}
     .edit-text.selected{outline:2px solid #4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.14);resize:both;overflow:hidden}
     .edit-text.selected::after{content:'↘';position:absolute;right:1px;bottom:-1px;width:18px;height:18px;display:grid;place-items:center;font-size:12px;line-height:1;color:#fff;background:#4f46e5;border-radius:5px 0 0 0;pointer-events:none}
@@ -157,6 +158,14 @@
     .match-toolbar-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:8px}
     .match-control label{display:flex;justify-content:space-between;gap:8px;font-size:10px;font-weight:750;color:#475569;margin-bottom:3px}
     .match-control input[type="range"]{width:100%;accent-color:#4f46e5}
+    .font-size-live{margin-top:8px;padding:8px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}
+    .font-size-live-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;font-size:10px;font-weight:800;color:#475569}
+    .font-size-live-row{display:grid;grid-template-columns:34px 1fr 62px 34px;gap:6px;align-items:center}
+    .font-size-live-row button{height:30px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#334155;font-weight:900;font-size:16px;cursor:pointer}
+    .font-size-live-row input[type="range"]{width:100%;accent-color:#4f46e5}
+    .font-size-live-row input[type="number"]{width:100%;height:30px;border:1px solid #cbd5e1;border-radius:8px;padding:0 6px;text-align:center;font-weight:800;color:#0f172a;background:#fff}
+    .font-fit-row{display:flex;gap:6px;margin-top:6px}
+    .font-fit-row button{flex:1;border:1px solid #c7d2fe;border-radius:8px;background:#eef2ff;color:#4338ca;padding:6px 8px;font-size:10px;font-weight:800;cursor:pointer}
     .match-preview{margin-top:7px;padding:6px 8px;border:1px dashed #cbd5e1;border-radius:8px;min-height:28px;white-space:pre-wrap;overflow:hidden;line-height:1.1}
     .match-toolbar-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:7px}
     .match-toolbar-actions button{border:1px solid var(--line);border-radius:8px;padding:6px 9px;background:#fff;font-size:10px;font-weight:750;color:#334155}
@@ -270,6 +279,20 @@
     <div class="match-toolbar-grid">
       <div class="match-control"><label><span>Brightness</span><span id="floatingBrightValue">100%</span></label><input id="floatingBrightness" type="range" min="40" max="180" value="100"></div>
       <div class="match-control"><label><span>Old-print darkness</span><span id="floatingDarkValue">100%</span></label><input id="floatingDarkness" type="range" min="5" max="160" value="100"></div>
+    </div>
+    <div class="font-size-live">
+      <div class="font-size-live-head"><span>Font size — live in the selected box</span><span id="floatingFontSizeValue">18 px</span></div>
+      <div class="font-size-live-row">
+        <button id="floatingFontMinus" type="button" title="Reduce font size">−</button>
+        <input id="floatingFontSize" type="range" min="6" max="160" step="0.5" value="18">
+        <input id="floatingFontSizeNumber" type="number" min="6" max="160" step="0.5" value="18" aria-label="Font size in pixels">
+        <button id="floatingFontPlus" type="button" title="Increase font size">+</button>
+      </div>
+      <div class="font-fit-row"><button id="floatingFitFont" type="button">↔↕ Fit font to box</button><button id="floatingResetFont" type="button">Reset detected size</button></div>
+      <div class="match-toolbar-grid" style="margin-top:8px">
+        <div class="match-control"><label><span>Text width ↔</span><span id="floatingTextWidthValue">100%</span></label><input id="floatingTextWidth" type="range" min="50" max="200" step="1" value="100"></div>
+        <div class="match-control"><label><span>Text height ↕</span><span id="floatingTextHeightValue">100%</span></label><input id="floatingTextHeight" type="range" min="50" max="200" step="1" value="100"></div>
+      </div>
     </div>
     <div class="match-preview" id="floatingMatchPreview">Live preview</div>
     <div class="match-toolbar-actions"><button id="floatingDelete" class="delete" type="button">Delete box</button><button id="floatingDone" class="done" type="button">Done</button></div>
@@ -545,6 +568,9 @@
       h:parseFloat(el.style.height)||parseFloat(el.style.minHeight)||24,
       fontFamily:el.style.fontFamily||'Arial',
       fontSize:parseFloat(el.style.fontSize)||18,
+      detectedFontSize:parseFloat(el.dataset.detectedFontSize||el.style.fontSize)||18,
+      scaleX:parseFloat(el.dataset.scaleX||100),
+      scaleY:parseFloat(el.dataset.scaleY||100),
       fontWeight:el.style.fontWeight||'400',
       color:el.dataset.baseColor||rgbCssToHex(el.style.color)||'#111827',
       opacity:parseFloat(el.style.opacity||1),
@@ -572,10 +598,20 @@
     el.className='edit-text';
     el.contentEditable='false';
     el.spellcheck=false;
-    el.textContent=text;
+    const textSpan=document.createElement('span');
+    textSpan.className='edit-text-content';
+    textSpan.textContent=text;
+    el.appendChild(textSpan);
+    // Keep all existing editor code compatible while rendering the text in a separately scalable inner layer.
+    try{Object.defineProperty(el,'textContent',{configurable:true,get(){return textSpan.textContent||'';},set(v){textSpan.textContent=v==null?'':String(v);}});}catch(_e){}
     el.style.left=x+'px';el.style.top=y+'px';el.style.width=Math.max(40,w)+'px';el.style.height=Math.max(18,h)+'px';el.style.minHeight='18px';
     el.style.fontFamily=opts.fontFamily||$('#fontFamily').value||'Arial';
     el.style.fontSize=(opts.fontSize||18)+'px';el.style.fontWeight=opts.fontWeight||'400';
+    el.dataset.detectedFontSize=String(opts.detectedFontSize||opts.fontSize||18);
+    el.dataset.scaleX=String(opts.scaleX ?? 100);
+    el.dataset.scaleY=String(opts.scaleY ?? 100);
+    el.style.setProperty('--text-scale-x',String((parseFloat(el.dataset.scaleX)||100)/100));
+    el.style.setProperty('--text-scale-y',String((parseFloat(el.dataset.scaleY)||100)/100));
     el.style.color=opts.color||'#111827';el.style.opacity=(opts.opacity ?? 1);
     el.dataset.baseColor=opts.color||'#111827';
     el.dataset.brightness=String(opts.brightness ?? 100);
@@ -656,7 +692,7 @@
     bar.classList.add('show');
     bar.classList.remove('above');
     const r=el.getBoundingClientRect();
-    const bw=bar.offsetWidth||440,bh=bar.offsetHeight||180,margin=9;
+    const bw=bar.offsetWidth||460,bh=bar.offsetHeight||350,margin=9;
     let left=clamp(r.left,8,Math.max(8,window.innerWidth-bw-8));
     let top=r.bottom+margin;
     if(top+bh>window.innerHeight-8 && r.top-bh-margin>8){top=r.top-bh-margin;bar.classList.add('above');}
@@ -675,6 +711,8 @@
     preview.style.opacity=cs.opacity;
     preview.style.backgroundColor=el.dataset.backgroundColor||'#ffffff';
     preview.style.textShadow=cs.textShadow==='none'?'none':cs.textShadow;
+    preview.style.transformOrigin='left top';
+    preview.style.transform=`scale(${(parseFloat(el.dataset.scaleX||100)/100)},${(parseFloat(el.dataset.scaleY||100)/100)})`;
     $('#floatingMatchStatus').textContent=(parseFloat(el.dataset.darkness||100)<20)?'Very faint':'Live';
   }
   function syncFloatingMatchToolbar(el=state.selectedText){
@@ -684,6 +722,11 @@
     const br=Math.round(parseFloat(el.dataset.brightness||100)),dk=Math.max(5,Math.round(parseFloat(el.dataset.darkness||100)));
     $('#floatingBrightness').value=br;$('#floatingBrightValue').textContent=br+'%';
     $('#floatingDarkness').value=dk;$('#floatingDarkValue').textContent=dk+'%';
+    const fs=clamp(parseFloat(el.style.fontSize)||18,6,160);
+    $('#floatingFontSize').value=fs;$('#floatingFontSizeNumber').value=fs;$('#floatingFontSizeValue').textContent=(Math.round(fs*10)/10)+' px';
+    const sx=clamp(parseFloat(el.dataset.scaleX||100),50,200),sy=clamp(parseFloat(el.dataset.scaleY||100),50,200);
+    $('#floatingTextWidth').value=sx;$('#floatingTextWidthValue').textContent=Math.round(sx)+'%';
+    $('#floatingTextHeight').value=sy;$('#floatingTextHeightValue').textContent=Math.round(sy)+'%';
     updateFloatingMatchPreview(el);scheduleMatchToolbarPosition();
   }
   function hideFloatingMatchToolbar(){const bar=$('#floatingMatchToolbar');if(bar)bar.classList.remove('show');}
@@ -799,6 +842,7 @@
       const st=analyzeSelectedRegion(x,y,w,h,text);
       el.style.fontFamily=st.fontFamily;
       el.style.fontSize=st.fontSize+'px';
+      el.dataset.detectedFontSize=String(st.fontSize);
       el.style.fontWeight=st.fontWeight;
       el.dataset.baseColor=st.color;
       applyTextTone(el);
@@ -909,7 +953,7 @@
   $('#paper').addEventListener('dblclick',e=>{ if(state.drawMode||e.target.classList.contains('edit-text'))return; const rect=$('#paper').getBoundingClientRect(),scale=Number($('#paper').dataset.visualScale||1);makeEditableText('New text',(e.clientX-rect.left)/scale,(e.clientY-rect.top)/scale,220,32); });
   $('#addTextBtn').addEventListener('click',()=>makeEditableText());
   $('#matchBgBtn').addEventListener('click',()=>applyMatchedPatch());
-  $('#autoMatchBtn').addEventListener('click',()=>{if(!state.selectedText){toast('Select an editable text box first.');return;}const el=state.selectedText,x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0,w=parseFloat(el.style.width)||120,h=parseFloat(el.style.height)||parseFloat(el.style.minHeight)||25,st=analyzeSelectedRegion(x,y,w,h,el.textContent||'');el.style.fontFamily=st.fontFamily;el.style.fontSize=st.fontSize+'px';el.style.fontWeight=st.fontWeight;el.dataset.baseColor=st.color;applyMatchedPatch(el);applyTextTone(el);selectEditable(el);$('#detectedStyle').textContent=`Re-matched: ${st.fontFamily} • ~${st.fontSize}px • weight ${st.fontWeight} • text ${st.color} • background ${st.bg}.`;});
+  $('#autoMatchBtn').addEventListener('click',()=>{if(!state.selectedText){toast('Select an editable text box first.');return;}const el=state.selectedText,x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0,w=parseFloat(el.style.width)||120,h=parseFloat(el.style.height)||parseFloat(el.style.minHeight)||25,st=analyzeSelectedRegion(x,y,w,h,el.textContent||'');el.style.fontFamily=st.fontFamily;el.style.fontSize=st.fontSize+'px';el.dataset.detectedFontSize=String(st.fontSize);el.style.fontWeight=st.fontWeight;el.dataset.baseColor=st.color;applyMatchedPatch(el);applyTextTone(el);selectEditable(el);$('#detectedStyle').textContent=`Re-matched: ${st.fontFamily} • ~${st.fontSize}px • weight ${st.fontWeight} • text ${st.color} • background ${st.bg}.`;});
   $('#deleteTextBtn').addEventListener('click',deleteSelectedBox);
 
   $('#paper').addEventListener('pointerdown',e=>{
@@ -955,7 +999,7 @@
   $('#boxHeight').addEventListener('input',e=>setSelectedBoxSize('h',e.target.value));
   $('#replacementText').addEventListener('input',e=>{if(state.selectedText){state.selectedText.textContent=e.target.value;syncFloatingMatchToolbar(state.selectedText);}});
   $('#fontFamily').addEventListener('change',e=>{if(state.selectedText)state.selectedText.style.fontFamily=e.target.value});
-  $('#fontSize').addEventListener('input',e=>{if(state.selectedText)state.selectedText.style.fontSize=e.target.value+'px'});
+  $('#fontSize').addEventListener('input',e=>{if(state.selectedText)setFloatingFontSize(e.target.value)});
   $('#fontWeight').addEventListener('change',e=>{if(state.selectedText)state.selectedText.style.fontWeight=e.target.value});
   $('#fontColor').addEventListener('input',e=>{if(state.selectedText){state.selectedText.dataset.baseColor=e.target.value;applyTextTone(state.selectedText)}});
   $('#fontOpacity').addEventListener('input',e=>{if(state.selectedText)state.selectedText.style.opacity=e.target.value/100});
@@ -967,6 +1011,52 @@
     const el=state.selectedText;if(!el)return;
     el.textContent=e.target.value;$('#replacementText').value=e.target.value;updateFloatingMatchPreview(el);scheduleMatchToolbarPosition();
   });
+  function setFloatingFontSize(value){
+    const el=state.selectedText;if(!el)return;
+    const v=clamp(parseFloat(value)||18,6,160);
+    el.style.fontSize=v+'px';
+    $('#fontSize').value=v;
+    $('#floatingFontSize').value=v;
+    $('#floatingFontSizeNumber').value=v;
+    $('#floatingFontSizeValue').textContent=(Math.round(v*10)/10)+' px';
+    updateFloatingMatchPreview(el);scheduleMatchToolbarPosition();
+  }
+  function fitSelectedFontToBox(){
+    const el=state.selectedText;if(!el)return;
+    const text=(el.textContent||'').trim();if(!text){toast('Type the replacement text first.');return;}
+    const cs=getComputedStyle(el),family=cs.fontFamily||'Arial',weight=cs.fontWeight||'400';
+    const boxW=Math.max(8,(parseFloat(el.style.width)||el.clientWidth||120)-6);
+    const boxH=Math.max(8,(parseFloat(el.style.height)||el.clientHeight||24)-4);
+    const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d');
+    const lines=(el.textContent||'').split(/\n/);
+    let lo=6,hi=160,best=6;
+    for(let i=0;i<15;i++){
+      const mid=(lo+hi)/2;ctx.font=`${weight} ${mid}px ${family}`;
+      const sx=(parseFloat(el.dataset.scaleX||100)/100),sy=(parseFloat(el.dataset.scaleY||100)/100);
+      const widest=Math.max(...lines.map(line=>ctx.measureText(line||' ').width))*sx;
+      const lineH=mid*1.05*lines.length*sy;
+      if(widest<=boxW && lineH<=boxH){best=mid;lo=mid;}else hi=mid;
+    }
+    setFloatingFontSize(Math.max(6,Math.floor(best*10)/10));
+    toast('Font fitted to the selected box.');
+  }
+  function setFloatingTextScale(axis,value){
+    const el=state.selectedText;if(!el)return;
+    const v=clamp(parseFloat(value)||100,50,200);
+    if(axis==='x'){el.dataset.scaleX=v;el.style.setProperty('--text-scale-x',String(v/100));$('#floatingTextWidth').value=v;$('#floatingTextWidthValue').textContent=Math.round(v)+'%';}
+    else{el.dataset.scaleY=v;el.style.setProperty('--text-scale-y',String(v/100));$('#floatingTextHeight').value=v;$('#floatingTextHeightValue').textContent=Math.round(v)+'%';}
+    updateFloatingMatchPreview(el);scheduleMatchToolbarPosition();
+  }
+  $('#floatingFontSize').addEventListener('input',e=>setFloatingFontSize(e.target.value));
+  $('#floatingFontSizeNumber').addEventListener('input',e=>setFloatingFontSize(e.target.value));
+  $('#floatingFontMinus').addEventListener('click',()=>{const el=state.selectedText;if(el)setFloatingFontSize((parseFloat(el.style.fontSize)||18)-1);});
+  $('#floatingFontPlus').addEventListener('click',()=>{const el=state.selectedText;if(el)setFloatingFontSize((parseFloat(el.style.fontSize)||18)+1);});
+  $('#floatingFitFont').addEventListener('click',fitSelectedFontToBox);
+  $('#floatingResetFont').addEventListener('click',()=>{const el=state.selectedText;if(el)setFloatingFontSize(parseFloat(el.dataset.detectedFontSize||18));});
+
+  $('#floatingTextWidth').addEventListener('input',e=>setFloatingTextScale('x',e.target.value));
+  $('#floatingTextHeight').addEventListener('input',e=>setFloatingTextScale('y',e.target.value));
+
   $('#floatingBrightness').addEventListener('input',e=>{
     const el=state.selectedText;if(!el)return;
     const v=+e.target.value;el.dataset.brightness=v;$('#fontBrightness').value=v;$('#brightValue').textContent=v+'%';$('#floatingBrightValue').textContent=v+'%';applyTextTone(el);
