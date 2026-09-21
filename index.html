@@ -109,6 +109,7 @@
     .head-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
     .mini-btn{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:#fff;font-weight:720;color:#334155}
     .mini-btn.active{background:#eef2ff;border-color:#a5b4fc;color:#4338ca}
+    .mini-btn.delete-active{border-color:#fecaca;color:#b91c1c;background:#fff7f7}
     .stage{padding:22px;min-height:620px;background:linear-gradient(180deg,#f8fafc,#f3f6fb)}
     .empty{min-height:540px;display:grid;place-items:center;text-align:center;color:var(--muted)}
     .empty-box{max-width:520px}.empty-graphic{font-size:62px;filter:drop-shadow(0 14px 14px rgba(15,23,42,.10))}
@@ -125,16 +126,20 @@
     .canvas-scroll{overflow:auto;max-height:760px;border:1px solid var(--line);border-radius:14px;background:#cbd5e1;padding:18px}
     .paper{position:relative;margin:auto;background:#fff;box-shadow:0 18px 50px rgba(15,23,42,.25);transform-origin:top center;user-select:none}
     .paper.draw-mode{cursor:crosshair}
+    .paper.select-mode{cursor:default}
     .paper canvas{display:block;max-width:none}
-    .overlay-layer{position:absolute;inset:0;pointer-events:none}
+    .overlay-layer{position:absolute;inset:0;z-index:20;pointer-events:auto}
+    .paper.draw-mode .overlay-layer{pointer-events:none}
     .draw-surface{position:absolute;inset:0;z-index:50;pointer-events:none;touch-action:none;background:transparent}
-    .paper.draw-mode .draw-surface{pointer-events:auto;cursor:crosshair}
+    .paper.draw-mode .draw-surface{pointer-events:none;cursor:crosshair}
     .selection-box{position:absolute;border:2px solid #4f46e5;background:rgba(79,70,229,.12);box-shadow:0 0 0 1px rgba(255,255,255,.9) inset;z-index:60;pointer-events:none}
     .edit-text{
       position:absolute;min-width:40px;min-height:20px;padding:1px 2px;outline:1px dashed transparent;
-      white-space:pre-wrap;line-height:1.05;pointer-events:auto;cursor:text;transform-origin:left top;z-index:5;overflow:visible
+      white-space:pre-wrap;line-height:1.05;pointer-events:auto;cursor:move;transform-origin:left top;z-index:25;overflow:visible
     }
-    .edit-text.selected{outline:1px dashed #4f46e5;box-shadow:0 0 0 2px rgba(79,70,229,.12)}
+    .edit-text:hover{outline:1px dashed rgba(79,70,229,.65)}
+    .edit-text.selected{outline:2px solid #4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.14)}
+    .edit-text.text-editing{cursor:text;outline:2px solid #06b6d4}
     .edit-text[data-patch="true"]{border-radius:1px}
     .editor-panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;align-self:start;position:sticky;top:100px}
     .editor-panel h4{margin:0 0 10px}.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.checkbox{display:flex;gap:8px;align-items:center;font-size:12px;color:#475569}.kbd{padding:2px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;background:#fff;font-size:10px}
@@ -209,9 +214,10 @@
             </div>
             <div class="editor-panel">
               <h4>Smart text replacement</h4>
-              <div class="small">Click <b>Draw replace box</b>, then drag directly over the old text. A blue selection rectangle should appear immediately. The editor OCRs that area, samples the background and text colour, estimates font size/weight/family, erases the old pixels, and prepares matching replacement text.</div>
-              <div class="row2" style="margin-top:12px"><button class="mini-btn primary" id="drawReplaceBtn">▭ Draw replace box</button><button class="mini-btn" id="autoMatchBtn">↻ Auto-match selected</button></div>
-              <div class="detect-card" id="detectedStyle">Draw a box over existing text to auto-detect its style.</div>
+              <div class="small">Choose <b>Draw replace box</b> and drag over the old text. Then the editor returns to <b>Cursor / Select</b> mode automatically. Click a box to select it, drag it to move it, double-click to edit directly, or use <b>Delete selected box</b> to remove an unwanted box.</div>
+              <div class="row2" style="margin-top:12px"><button class="mini-btn active" id="selectModeBtn">↖ Cursor / Select</button><button class="mini-btn primary" id="drawReplaceBtn">▭ Draw replace box</button></div>
+              <div class="row2" style="margin-top:8px"><button class="mini-btn danger" id="deleteBoxBtn">🗑 Delete selected box</button><button class="mini-btn" id="autoMatchBtn">↻ Auto-match selected</button></div>
+              <div class="detect-card" id="detectedStyle">Use <b>Cursor / Select</b> to click or move a box. Use <b>Draw replace box</b> to create a new replacement area.</div>
               <div class="form-row"><label>Replacement text</label><textarea id="replacementText" rows="3" placeholder="Draw a box first, then type the new text here."></textarea></div>
               <div class="divider"></div>
               <div class="form-row"><label>Font family</label><select id="fontFamily"><option>Arial</option><option>Calibri</option><option>Cambria</option><option>Times New Roman</option><option>Georgia</option><option>Verdana</option><option>Tahoma</option><option>Courier New</option><option>Poppins</option></select></div>
@@ -220,7 +226,7 @@
               <div class="form-row"><label>Font brightness <span id="brightValue">100%</span></label><input id="fontBrightness" type="range" min="40" max="180" value="100"></div>
               <label class="checkbox"><input id="patchToggle" type="checkbox" checked> Hide old text with matched background patch</label>
               <div class="row2" style="margin-top:12px"><button class="mini-btn" id="addTextBtn">+ Add text</button><button class="mini-btn" id="matchBgBtn">Rebuild background</button></div>
-              <div class="row2" style="margin-top:8px"><button class="mini-btn" id="ocrLayerBtn">OCR → editable layer</button><button class="mini-btn" id="deleteTextBtn">Delete</button></div>
+              <div class="row2" style="margin-top:8px"><button class="mini-btn" id="ocrLayerBtn">OCR → editable layer</button><button class="mini-btn" id="deleteTextBtn">Delete selected</button></div>
               <div class="divider"></div>
               <button class="action success" id="exportEditedBtn">Download edited file</button>
               <div class="small" style="margin-top:9px">PDF uploads export as PDF. Image uploads export as PNG.</div>
@@ -260,6 +266,7 @@
     editorEdits: {},
     selectedText: null,
     drawMode: false,
+    editorMode: 'select',
     drawStart: null,
     drawBox: null,
     originalFileName: 'document',
@@ -484,7 +491,7 @@
   // ---------- scan editor ----------
   async function openScanEditor(){
     const file=state.files[0]; if(!['pdf','png','jpg','jpeg','webp'].includes(ext(file.name))) throw new Error('PDF or image required');
-    const src=await sourcePagesAsCanvases(file,1.55); state.editorPages=src.pages; state.editorPdf=src.pdf; state.editorPage=0; state.editorEdits={}; state.selectedText=null; state.drawMode=false; state.editorSourceType=ext(file.name)==='pdf'?'pdf':'image'; state.originalImageType=file.type||'image/png';
+    const src=await sourcePagesAsCanvases(file,1.55); state.editorPages=src.pages; state.editorPdf=src.pdf; state.editorPage=0; state.editorEdits={}; state.selectedText=null; state.drawMode=false; state.editorMode='select'; state.editorSourceType=ext(file.name)==='pdf'?'pdf':'image'; state.originalImageType=file.type||'image/png';
     $('#previewWrap').innerHTML=''; $('#emptyState').style.display='none'; $('#editorShell').classList.add('open'); $('#mainTitle').textContent='Smart scanned document editor'; $('#mainSub').textContent='Draw a box over text → auto-detect style → type replacement → download.';
     renderThumbs(); loadEditorPage(0); setProgress(100,'Editor ready');
   }
@@ -513,7 +520,7 @@
   }
 
   function loadEditorPage(i){
-    state.editorPage=i; state.selectedText=null; const src=state.editorPages[i], bg=$('#bgCanvas'),ctx=bg.getContext('2d');bg.width=src.width;bg.height=src.height;ctx.drawImage(src,0,0); const paper=$('#paper');paper.style.width=src.width+'px';paper.style.height=src.height+'px';paper.classList.remove('draw-mode');state.drawMode=false;$('#drawReplaceBtn')?.classList.remove('active');if($('#drawReplaceBtn'))$('#drawReplaceBtn').textContent='▭ Draw replace box';$('#overlayLayer').innerHTML='';
+    state.editorPage=i; state.selectedText=null; const src=state.editorPages[i], bg=$('#bgCanvas'),ctx=bg.getContext('2d');bg.width=src.width;bg.height=src.height;ctx.drawImage(src,0,0); const paper=$('#paper');paper.style.width=src.width+'px';paper.style.height=src.height+'px';$('#overlayLayer').innerHTML=''; setEditorMode('select', false);
     const saved=state.editorEdits[i]||[];
     saved.forEach(d=>makeEditableText(d.text,d.x,d.y,d.w,d.h,{...d,select:false,autoPatch:false,patchData:d.patchData}));
     if(saved.length) selectEditable(null);
@@ -524,17 +531,60 @@
   function saveAndSwitchPage(i){ serializeCurrentPageEdits(); loadEditorPage(i); }
 
   function makeEditableText(text='Type here',x=50,y=50,w=220,h=32,opts={}){
-    const el=document.createElement('div');el.className='edit-text';el.contentEditable='true';el.spellcheck=false;el.textContent=text;el.style.left=x+'px';el.style.top=y+'px';el.style.width=Math.max(40,w)+'px';el.style.minHeight=Math.max(18,h)+'px';el.style.fontFamily=opts.fontFamily||$('#fontFamily').value||'Arial';el.style.fontSize=(opts.fontSize||18)+'px';el.style.fontWeight=opts.fontWeight||'400';el.style.color=opts.color||'#111827';el.style.opacity=(opts.opacity ?? 1);el.dataset.baseColor=opts.color||'#111827';el.dataset.patch='false';
-    el.addEventListener('mousedown',e=>{
+    const el=document.createElement('div');
+    el.className='edit-text';
+    el.contentEditable='false';
+    el.spellcheck=false;
+    el.textContent=text;
+    el.style.left=x+'px';el.style.top=y+'px';el.style.width=Math.max(40,w)+'px';el.style.minHeight=Math.max(18,h)+'px';
+    el.style.fontFamily=opts.fontFamily||$('#fontFamily').value||'Arial';
+    el.style.fontSize=(opts.fontSize||18)+'px';el.style.fontWeight=opts.fontWeight||'400';
+    el.style.color=opts.color||'#111827';el.style.opacity=(opts.opacity ?? 1);
+    el.dataset.baseColor=opts.color||'#111827';el.dataset.patch='false';
+
+    let drag=null;
+    el.addEventListener('pointerdown',e=>{
       if(state.drawMode) return;
+      if(el.contentEditable==='true') return;
+      e.preventDefault();e.stopPropagation();
       selectEditable(el);
-      if(e.altKey){ e.preventDefault(); const startX=e.clientX,startY=e.clientY,sl=parseFloat(el.style.left),st=parseFloat(el.style.top); const scale=Number($('#paper').dataset.visualScale||1); const mm=ev=>{el.style.left=(sl+(ev.clientX-startX)/scale)+'px';el.style.top=(st+(ev.clientY-startY)/scale)+'px';}; const up=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',up);};window.addEventListener('mousemove',mm);window.addEventListener('mouseup',up); }
+      const scale=Number($('#paper').dataset.visualScale||1) || 1;
+      drag={id:e.pointerId,startX:e.clientX,startY:e.clientY,left:parseFloat(el.style.left)||0,top:parseFloat(el.style.top)||0,moved:false};
+      try{el.setPointerCapture(e.pointerId);}catch(_e){}
     });
-    el.addEventListener('input',()=>{selectEditable(el);if($('#replacementText').value!==el.textContent)$('#replacementText').value=el.textContent||'';}); $('#overlayLayer').appendChild(el);
+    el.addEventListener('pointermove',e=>{
+      if(!drag || e.pointerId!==drag.id || el.contentEditable==='true') return;
+      const scale=Number($('#paper').dataset.visualScale||1) || 1;
+      const dx=(e.clientX-drag.startX)/scale,dy=(e.clientY-drag.startY)/scale;
+      if(Math.abs(dx)>2||Math.abs(dy)>2)drag.moved=true;
+      const maxX=Math.max(0,$('#bgCanvas').width-(parseFloat(el.style.width)||40));
+      const maxY=Math.max(0,$('#bgCanvas').height-(parseFloat(el.style.minHeight)||18));
+      el.style.left=clamp(drag.left+dx,0,maxX)+'px';
+      el.style.top=clamp(drag.top+dy,0,maxY)+'px';
+    });
+    const endDrag=e=>{
+      if(!drag || (e.pointerId!=null && e.pointerId!==drag.id)) return;
+      drag=null;
+    };
+    el.addEventListener('pointerup',endDrag);
+    el.addEventListener('pointercancel',endDrag);
+    el.addEventListener('lostpointercapture',endDrag);
+
+    el.addEventListener('dblclick',e=>{
+      if(state.drawMode)return;
+      e.preventDefault();e.stopPropagation();
+      selectEditable(el);
+      el.contentEditable='true';el.classList.add('text-editing');el.focus();
+      const range=document.createRange();range.selectNodeContents(el);range.collapse(false);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
+    });
+    el.addEventListener('blur',()=>{el.contentEditable='false';el.classList.remove('text-editing');});
+    el.addEventListener('input',()=>{selectEditable(el);if($('#replacementText').value!==el.textContent)$('#replacementText').value=el.textContent||'';});
+    $('#overlayLayer').appendChild(el);
     if(opts.patchData){ setPatchImage(el,opts.patchData,opts.backgroundColor||''); }
     else if(opts.patch && opts.autoPatch===false){ el.dataset.patch='true'; }
     else if(opts.autoPatch!==false && $('#patchToggle').checked) applyMatchedPatch(el);
-    if(opts.select!==false) selectEditable(el); return el;
+    if(opts.select!==false) selectEditable(el);
+    return el;
   }
 
   function selectEditable(el){
@@ -641,6 +691,7 @@
       setProgress(8,'Reading selected text');
       worker=await getOcrWorker(lang);
       const r=await worker.recognize(crop);
+      if(!el.isConnected) return;
       text=(r.data.text||'').replace(/\n+/g,' ').replace(/\s+/g,' ').trim();
       const st=analyzeSelectedRegion(x,y,w,h,text);
       el.style.fontFamily=st.fontFamily;
@@ -658,6 +709,7 @@
       setProgress(100,'Style matched');
     }catch(err){
       console.warn('Selection OCR failed',err);
+      if(!el.isConnected) return;
       $('#detectedStyle').textContent=`Style matched from image pixels. OCR could not read this selection, but you can type the replacement manually. Approx. ${firstStyle.fontFamily} • ${firstStyle.fontSize}px • ${firstStyle.color}.`;
       setProgress(100,'Area ready');
       toast('Box is ready. OCR failed, so type the replacement manually.');
@@ -666,19 +718,40 @@
     }
   }
 
-  function setDrawMode(on){
-    state.drawMode=!!on;
+  function setEditorMode(mode, notify=true){
+    const paper=$('#paper');
+    state.editorMode=mode==='draw'?'draw':'select';
+    state.drawMode=state.editorMode==='draw';
     state.drawStart=null;
     if(state.drawBox){state.drawBox.remove();state.drawBox=null;}
-    $('#paper').classList.toggle('draw-mode',state.drawMode);
+    paper.classList.toggle('draw-mode',state.drawMode);
+    paper.classList.toggle('select-mode',!state.drawMode);
     $('#drawReplaceBtn').classList.toggle('active',state.drawMode);
+    $('#selectModeBtn').classList.toggle('active',!state.drawMode);
     $('#drawReplaceBtn').textContent=state.drawMode?'✕ Cancel drawing':'▭ Draw replace box';
-    if(state.drawMode) toast('Now drag directly over the old text.');
+    if(notify){
+      if(state.drawMode) toast('Draw mode: drag a rectangle tightly around the old text.');
+      else toast('Cursor mode: click a box to select it, drag to move, Delete to remove.');
+    }
   }
+  function deleteSelectedBox(){
+    const el=state.selectedText;
+    if(!el){toast('Select a replacement box first.');return;}
+    el.remove();
+    state.selectedText=null;
+    $('#replacementText').value='';
+    $('#detectedStyle').innerHTML='Box deleted. The original scanned text/background is visible again. Use <b>Draw replace box</b> to create another.';
+    toast('Selected box deleted.');
+  }
+  $('#selectModeBtn').addEventListener('click',()=>{
+    if(!state.editorPages.length){toast('Open a scanned PDF or image first.');return;}
+    setEditorMode('select');
+  });
   $('#drawReplaceBtn').addEventListener('click',()=>{
     if(!state.editorPages.length){toast('Open a scanned PDF or image first.');return;}
-    setDrawMode(!state.drawMode);
+    setEditorMode(state.drawMode?'select':'draw');
   });
+  $('#deleteBoxBtn').addEventListener('click',deleteSelectedBox);
 
   const drawSurface=$('#drawSurface');
   function pointOnPaper(e){
@@ -699,7 +772,7 @@
     Object.assign(box.style,{left:p.x+'px',top:p.y+'px',width:'1px',height:'1px'});
     $('#paper').appendChild(box);
     state.drawBox=box;
-    try{drawSurface.setPointerCapture(e.pointerId);}catch(_e){}
+    try{$('#paper').setPointerCapture(e.pointerId);}catch(_e){}
   }
   function moveReplaceDraw(e){
     if(!state.drawMode||!state.drawStart||!state.drawBox)return;
@@ -716,21 +789,36 @@
     const x=parseFloat(b?.style.left)||0,y=parseFloat(b?.style.top)||0,w=parseFloat(b?.style.width)||0,h=parseFloat(b?.style.height)||0;
     if(b)b.remove();
     state.drawBox=null;state.drawStart=null;
-    setDrawMode(false);
+    setEditorMode('select', false);
     if(w>=8&&h>=8) smartReplaceBox(x,y,w,h);
     else toast('Draw a slightly larger box around the text.');
   }
-  drawSurface.addEventListener('pointerdown',beginReplaceDraw);
-  drawSurface.addEventListener('pointermove',moveReplaceDraw);
-  drawSurface.addEventListener('pointerup',finishReplaceDraw);
-  drawSurface.addEventListener('pointercancel',finishReplaceDraw);
-  drawSurface.addEventListener('lostpointercapture',e=>{if(state.drawMode&&state.drawStart)finishReplaceDraw(e);});
+  const paperDrawTarget=$('#paper');
+  // Capture-phase listeners make drawing work even when the pointer starts over the canvas or an existing overlay.
+  paperDrawTarget.addEventListener('pointerdown',e=>{if(state.drawMode)beginReplaceDraw(e);},true);
+  paperDrawTarget.addEventListener('pointermove',e=>{if(state.drawMode)moveReplaceDraw(e);},true);
+  paperDrawTarget.addEventListener('pointerup',e=>{if(state.drawMode)finishReplaceDraw(e);},true);
+  paperDrawTarget.addEventListener('pointercancel',e=>{if(state.drawMode)finishReplaceDraw(e);},true);
+  paperDrawTarget.addEventListener('lostpointercapture',e=>{if(state.drawMode&&state.drawStart)finishReplaceDraw(e);});
 
   $('#paper').addEventListener('dblclick',e=>{ if(state.drawMode||e.target.classList.contains('edit-text'))return; const rect=$('#paper').getBoundingClientRect(),scale=Number($('#paper').dataset.visualScale||1);makeEditableText('New text',(e.clientX-rect.left)/scale,(e.clientY-rect.top)/scale,220,32); });
   $('#addTextBtn').addEventListener('click',()=>makeEditableText());
   $('#matchBgBtn').addEventListener('click',()=>applyMatchedPatch());
   $('#autoMatchBtn').addEventListener('click',()=>{if(!state.selectedText){toast('Select an editable text box first.');return;}const el=state.selectedText,x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0,w=parseFloat(el.style.width)||120,h=parseFloat(el.style.minHeight)||25,st=analyzeSelectedRegion(x,y,w,h,el.textContent||'');el.style.fontFamily=st.fontFamily;el.style.fontSize=st.fontSize+'px';el.style.fontWeight=st.fontWeight;el.dataset.baseColor=st.color;el.style.color=st.color;applyMatchedPatch(el);selectEditable(el);$('#detectedStyle').textContent=`Re-matched: ${st.fontFamily} • ~${st.fontSize}px • weight ${st.fontWeight} • text ${st.color} • background ${st.bg}.`;});
-  $('#deleteTextBtn').addEventListener('click',()=>{ if(state.selectedText){state.selectedText.remove();state.selectedText=null;$('#replacementText').value='';} });
+  $('#deleteTextBtn').addEventListener('click',deleteSelectedBox);
+
+  $('#paper').addEventListener('pointerdown',e=>{
+    if(state.drawMode) return;
+    if(e.target===$('#paper') || e.target===$('#bgCanvas') || e.target===$('#overlayLayer')) selectEditable(null);
+  });
+  document.addEventListener('keydown',e=>{
+    if((e.key==='Delete'||e.key==='Backspace') && state.selectedText){
+      const tag=document.activeElement?.tagName;
+      const editing=state.selectedText.contentEditable==='true' || ['INPUT','TEXTAREA','SELECT'].includes(tag);
+      if(!editing){e.preventDefault();deleteSelectedBox();}
+    }
+    if(e.key==='Escape' && state.drawMode) setEditorMode('select');
+  });
 
   function hexToRgb(hex){const m=hex.replace('#','');return {r:parseInt(m.slice(0,2),16),g:parseInt(m.slice(2,4),16),b:parseInt(m.slice(4,6),16)}}
   function adjustBrightness(hex,p){const {r,g,b}=hexToRgb(hex),f=p/100;return `rgb(${Math.min(255,Math.round(r*f))},${Math.min(255,Math.round(g*f))},${Math.min(255,Math.round(b*f))})`}
